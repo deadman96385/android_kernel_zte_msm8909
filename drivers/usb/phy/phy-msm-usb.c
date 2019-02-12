@@ -467,6 +467,97 @@ static void ulpi_init(struct msm_otg *motg)
 	}
 }
 
+/* for usb eye diagram test */
+static int param_override_testing;
+static int param_override[] = {
+	-1, -1,
+	-1, -1,
+	-1, -1,
+	-1, -1,
+	-1
+};
+
+static void param_override_init(struct msm_otg *motg)
+{
+	/*struct msm_otg_platform_data *pdata = motg->pdata;*/
+	/*seq = pdata->phy_init_seq_override if need*/
+	int *seq = NULL;
+
+	if (param_override_testing) {
+		seq = param_override;
+		motg->pdata->phy_init_seq = param_override;
+	}
+
+	if (!seq) {
+		dev_info(motg->phy.dev, "usb %s param_override_init is null, skip\n", __func__);
+		return;
+	}
+	while (seq[0] >= 0) {
+		dev_info(motg->phy.dev, "usb param_override_init: write 0x%02x to 0x%02x\n",
+				seq[0], seq[1]);
+		ulpi_write(&motg->phy, seq[0], seq[1]);
+		seq += 2;
+	}
+}
+
+static int diagram_param_write(const char *val, struct kernel_param *kp)
+{
+	int err, size, i = 0;
+	char buf[256] = {0};
+	char *b;
+	char *value;
+	unsigned long tmp;
+	struct msm_otg *motg = the_msm_otg;
+
+	dev_info(motg->phy.dev, "usb diagram_param_write val = %s\n", val);
+
+	size = sizeof(param_override)-1;
+	strlcpy(buf, val, sizeof(buf));
+	b = strim(buf);
+	while (b) {
+		value = strsep(&b, ",");
+		if (value) {
+			err = kstrtoul(value, 16, &tmp);
+			if (err) {
+				dev_err(motg->phy.dev, "%s kstrtoul failed\n", __func__);
+				param_override_testing = 0;
+				goto out;
+			}
+			if (i < size)
+				param_override[i] = (int)tmp;
+			i++;
+			if (!param_override_testing)
+				param_override_testing = 1;
+		}
+	}
+
+	param_override_init(motg);
+
+out:
+	return strlen(val);
+}
+
+static int diagram_param_read(char *buf, struct kernel_param *kp)
+{
+	int i = 0;
+	u32 reg[4] = {0x80, 0x81, 0x82, 0x83};
+	char *buff = buf;
+	struct msm_otg *motg = the_msm_otg;
+
+	for (i = 0; i < 4; i++) {
+		buff += scnprintf(buff, PAGE_SIZE,
+			"REG[0x%02x]=0x%02x,", reg[i], ulpi_read(&motg->phy, reg[i]));
+	}
+	if (buff != buf)
+		*(buff-1) = '\n';
+	return buff - buf;
+
+}
+
+module_param_call(diagram_param, diagram_param_write, diagram_param_read,
+		  NULL, 0664);
+MODULE_PARM_DESC(diagram_param, "USB eye diagram_param");
+
 static int msm_otg_phy_clk_reset(struct msm_otg *motg)
 {
 	int ret;
@@ -1941,11 +2032,68 @@ static void msm_otg_set_online_status(struct msm_otg *motg)
 		dev_dbg(motg->phy.dev, "error setting power supply property\n");
 }
 
+/* Usb online lpm test requirement, 2/5 */
+static void msm_otg_set_vbus_state(int online);
+static int forge_usb_offline = 0;
+
+static ssize_t set_usb_online_fn(struct device *dev, struct device_attribute *attr,
+								const char *buf, size_t count)
+{
+	int online;
+
+	if (kstrtoint(buf, 10, &online) < 0)
+		return -EINVAL;
+
+	online = !!online;
+	pr_info("%s, online : %d\n", __func__, online);
+	msm_otg_set_vbus_state(online);
+	forge_usb_offline = !online;
+	return 1;
+}
+
+static DEVICE_ATTR(set_usb_online, S_IWUSR, NULL, set_usb_online_fn);
+
+static struct device_attribute *lpm_test_attributes[] = {
+	&dev_attr_set_usb_online,
+	NULL
+};
+
+static int lpm_test_create_device(struct msm_otg *motg)
+{
+	struct device_attribute **attrs = lpm_test_attributes;
+	struct device_attribute *attr;
+	int err;
+
+	pr_debug("%s\n", __func__);
+	motg->lpm_test_class = class_create(THIS_MODULE, "charger");
+	if (IS_ERR(motg->lpm_test_class))
+		return PTR_ERR(motg->lpm_test_class);
+
+	motg->lpm_test_dev = device_create(motg->lpm_test_class, NULL, 0, NULL, "test");
+	if (IS_ERR(motg->lpm_test_dev))
+		return PTR_ERR(motg->lpm_test_dev);
+
+	dev_set_drvdata(motg->lpm_test_dev, motg);
+
+	while ((attr = *attrs++)) {
+		err = device_create_file(motg->lpm_test_dev, attr);
+		if (err) {
+			device_destroy(motg->lpm_test_class, 0);
+			return err;
+		}
+	}
+	return 0;
+}
+
 static void msm_otg_notify_charger(struct msm_otg *motg, unsigned mA)
 {
 	struct usb_gadget *g = motg->phy.otg->gadget;
 
 	if (g && g->is_a_peripheral)
+		return;
+
+	/* Usb online lpm test requirement, 3/5 */
+	if (forge_usb_offline)
 		return;
 
 	if ((motg->chg_type == USB_ACA_DOCK_CHARGER ||
@@ -1984,6 +2132,7 @@ static void msm_otg_notify_charger(struct msm_otg *motg, unsigned mA)
 	motg->cur_power = mA;
 }
 
+static int skip_invalid_chg_work = 0; /*wall charger in which D+/D- disconnected would be recognized as usb cable, 1/7*/
 static int msm_otg_set_power(struct usb_phy *phy, unsigned mA)
 {
 	struct msm_otg *motg = container_of(phy, struct msm_otg, phy);
@@ -1995,8 +2144,18 @@ static int msm_otg_set_power(struct usb_phy *phy, unsigned mA)
 	 * IDEV_CHG can be drawn irrespective of suspend/un-configured
 	 * states when CDP/ACA is connected.
 	 */
-	if (motg->chg_type == USB_SDP_CHARGER)
+
+	if (motg->chg_type == USB_SDP_CHARGER) {
+		pr_info("usb %s mA:%d\n", __func__, mA);
+		/*
+		* wall charger in which D+/D- disconnected
+		* would be recognized as usb cable, 2/7
+		*/
+		if (mA >= IDEV_CHG_MIN)
+			skip_invalid_chg_work = 1;
+
 		msm_otg_notify_charger(motg, mA);
+	}
 
 	return 0;
 }
@@ -2013,7 +2172,7 @@ static void msm_otg_start_host(struct usb_otg *otg, int on)
 	hcd = bus_to_hcd(otg->host);
 
 	if (on) {
-		dev_dbg(otg->phy->dev, "host on\n");
+		dev_info(otg->phy->dev, "host on\n");
 		msm_otg_dbg_log_event(&motg->phy, "HOST ON",
 				motg->inputs, otg->phy->state);
 
@@ -2023,7 +2182,7 @@ static void msm_otg_start_host(struct usb_otg *otg, int on)
 
 		usb_add_hcd(hcd, hcd->irq, IRQF_SHARED);
 	} else {
-		dev_dbg(otg->phy->dev, "host off\n");
+		dev_info(otg->phy->dev, "host off\n");
 		msm_otg_dbg_log_event(&motg->phy, "HOST OFF",
 				motg->inputs, otg->phy->state);
 
@@ -2212,7 +2371,7 @@ static int msm_otg_set_host(struct usb_otg *otg, struct usb_bus *host)
 	motg->usbdev_nb.notifier_call = msm_otg_usbdev_notify;
 	usb_register_notify(&motg->usbdev_nb);
 	otg->host = host;
-	dev_dbg(otg->phy->dev, "host driver registered w/ tranceiver\n");
+	dev_info(otg->phy->dev, "host driver registered w/ tranceiver\n");
 	msm_otg_dbg_log_event(&motg->phy, "HOST DRIVER REGISTERED",
 			hcd->power_budget, motg->pdata->mode);
 
@@ -3066,6 +3225,20 @@ static void msm_chg_detect_work(struct work_struct *w)
 	queue_delayed_work(motg->otg_wq, &motg->chg_work, delay);
 }
 
+/* wall charger in which D+/D- disconnected would be recognized as usb cable, 3/7 */
+static void msm_invalid_chg_work(struct work_struct *w)
+{
+	struct msm_otg *motg = container_of(w, struct msm_otg, invalid_chg_work.work);
+
+	if (skip_invalid_chg_work) {
+		skip_invalid_chg_work = 0;
+		return;
+	}
+	pr_info("usb schedule %s\n", __func__);
+	msm_otg_notify_charger(motg, IDEV_CHG_MIN+1); /* >500mA */
+}
+/*end*/
+
 #define VBUS_INIT_TIMEOUT	msecs_to_jiffies(5000)
 
 /*
@@ -3231,7 +3404,13 @@ static void msm_otg_sm_work(struct work_struct *w)
 		pm_runtime_get_sync(otg->phy->dev);
 		motg->pm_done = 0;
 	}
+	pr_info("usbotg, state:0x%x, input:%lu, chg_type:%d\n",
+		otg->phy->state, motg->inputs, motg->chg_state);
 	pr_debug("%s work\n", usb_otg_state_string(otg->phy->state));
+	pr_info("%s: phy state:%s, input:0x%lx, chg_state:%d, chg_type:%d\n", __func__,
+			usb_otg_state_string(otg->phy->state), motg->inputs,
+			motg->chg_state, motg->chg_type);
+
 	msm_otg_dbg_log_event(&motg->phy, "SM WORK:",
 			otg->phy->state, motg->inputs);
 	switch (otg->phy->state) {
@@ -3336,6 +3515,10 @@ static void msm_otg_sm_work(struct work_struct *w)
 						OTG_STATE_B_PERIPHERAL;
 					break;
 				case USB_SDP_CHARGER:
+					/* wall charger in which D+/D- disconnected
+					would be recognized as usb cable, 4/7 */
+					schedule_delayed_work(&motg->invalid_chg_work, 5*HZ);
+					/*end*/
 					msm_otg_start_peripheral(otg, 1);
 					otg->phy->state =
 						OTG_STATE_B_PERIPHERAL;
@@ -3371,6 +3554,10 @@ static void msm_otg_sm_work(struct work_struct *w)
 			clear_bit(A_BUS_REQ, &motg->inputs);
 			cancel_delayed_work_sync(&motg->chg_work);
 			dcp = (motg->chg_type == USB_DCP_CHARGER);
+			/* wall charger in which D+/D- disconnected would be recognized as usb cable, 5/7 */
+			cancel_delayed_work_sync(&motg->invalid_chg_work);
+			skip_invalid_chg_work = 0;
+			/*end*/
 			motg->chg_state = USB_CHG_STATE_UNDEFINED;
 			motg->chg_type = USB_INVALID_CHARGER;
 			msm_otg_notify_charger(motg, 0);
@@ -4230,7 +4417,7 @@ static void msm_id_status_w(struct work_struct *w)
 						id_status_work.work);
 	int work = 0;
 
-	dev_dbg(motg->phy.dev, "ID status_w\n");
+	dev_info(motg->phy.dev, "ID status_w\n");
 
 	if (motg->pdata->pmic_id_irq)
 		motg->id_state = msm_otg_read_pmic_id_state(motg);
@@ -4243,7 +4430,7 @@ static void msm_id_status_w(struct work_struct *w)
 		if (gpio_is_valid(motg->pdata->switch_sel_gpio))
 			gpio_direction_input(motg->pdata->switch_sel_gpio);
 		if (!test_and_set_bit(ID, &motg->inputs)) {
-			pr_debug("ID set\n");
+			pr_info("ID set\n");
 			msm_otg_dbg_log_event(&motg->phy, "ID SET",
 					motg->inputs, motg->phy.state);
 			work = 1;
@@ -4252,7 +4439,7 @@ static void msm_id_status_w(struct work_struct *w)
 		if (gpio_is_valid(motg->pdata->switch_sel_gpio))
 			gpio_direction_output(motg->pdata->switch_sel_gpio, 1);
 		if (test_and_clear_bit(ID, &motg->inputs)) {
-			pr_debug("ID clear\n");
+			pr_info("ID clear\n");
 			msm_otg_dbg_log_event(&motg->phy, "ID CLEAR",
 					motg->inputs, motg->phy.state);
 			set_bit(A_BUS_REQ, &motg->inputs);
@@ -4678,6 +4865,10 @@ static int otg_power_set_property_usb(struct power_supply *psy,
 		break;
 	/* Process PMIC notification in PRESENT prop */
 	case POWER_SUPPLY_PROP_PRESENT:
+		/* Usb online lpm test requirement, 4/5 */
+		if (forge_usb_offline)
+			forge_usb_offline = 0;
+
 		msm_otg_set_vbus_state(val->intval);
 		break;
 	/* The ONLINE property reflects if usb has enumerated */
@@ -4732,7 +4923,7 @@ static int otg_power_set_property_usb(struct power_supply *psy,
 		if (motg->chg_type != USB_INVALID_CHARGER)
 			motg->chg_state = USB_CHG_STATE_DETECTED;
 
-		dev_dbg(motg->phy.dev, "%s: charger type = %s\n", __func__,
+		dev_info(motg->phy.dev, "%s: charger type = %s\n", __func__,
 			chg_to_string(motg->chg_type));
 		msm_otg_dbg_log_event(&motg->phy, "SET CHARGER TYPE ",
 				motg->chg_type, psy->type);
@@ -5753,6 +5944,9 @@ static int msm_otg_probe(struct platform_device *pdev)
 	INIT_DELAYED_WORK(&motg->suspend_work, msm_otg_suspend_work);
 	setup_timer(&motg->id_timer, msm_otg_id_timer_func,
 				(unsigned long) motg);
+	/* wall charger in which D+/D- disconnected would be recognized as usb cable, 6/7 */
+	INIT_DELAYED_WORK(&motg->invalid_chg_work, msm_invalid_chg_work);
+	/*end*/
 	setup_timer(&motg->chg_check_timer, msm_otg_chg_check_timer_func,
 				(unsigned long) motg);
 	motg->otg_wq = alloc_ordered_workqueue("k_otg", 0);
@@ -5771,7 +5965,7 @@ static int msm_otg_probe(struct platform_device *pdev)
 
 	motg->phy_irq = platform_get_irq_byname(pdev, "phy_irq");
 	if (motg->phy_irq < 0) {
-		dev_dbg(&pdev->dev, "phy_irq is not present\n");
+		dev_err(&pdev->dev, "phy_irq is not present\n");
 		motg->phy_irq = 0;
 	} else {
 
@@ -5793,6 +5987,7 @@ static int msm_otg_probe(struct platform_device *pdev)
 			dev_err(&pdev->dev, "phy_irq request fail %d\n", ret);
 			goto free_irq;
 		}
+		dev_info(&pdev->dev, "motg->phy_irq request ok\n");
 	}
 
 	if (motg->async_irq) {
@@ -6000,6 +6195,12 @@ static int msm_otg_probe(struct platform_device *pdev)
 	register_pm_notifier(&motg->pm_notify);
 	msm_otg_dbg_log_event(phy, "OTG PROBE", motg->caps, motg->lpm_flags);
 
+	/* Usb online lpm test requirement, 5/5 */
+	ret = lpm_test_create_device(motg);
+	if (ret) {
+		dev_dbg(&pdev->dev, "fail to setup lpm_test_device\n");
+	}
+
 	return 0;
 
 remove_cdev:
@@ -6102,6 +6303,10 @@ static int msm_otg_remove(struct platform_device *pdev)
 	cancel_delayed_work_sync(&motg->chg_work);
 	cancel_delayed_work_sync(&motg->id_status_work);
 	cancel_delayed_work_sync(&motg->suspend_work);
+	/* wall charger in which D+/D- disconnected would be recognized as usb cable, 7/7 */
+	cancel_delayed_work_sync(&motg->invalid_chg_work);
+	skip_invalid_chg_work = 0;
+	/*end*/
 	cancel_work_sync(&motg->sm_work);
 	destroy_workqueue(motg->otg_wq);
 

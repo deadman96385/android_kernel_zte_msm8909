@@ -33,7 +33,10 @@ static LIST_HEAD(clk_list);
 static DEFINE_MUTEX(clk_list_lock);
 
 static struct dentry *debugfs_base;
-static u32 debug_suspend;
+/*ZTE_PM ++++*/
+/*static u32 debug_suspend;*/
+static u32 debug_suspend = 1;
+/*ZTE_PM ----*/
 
 static int clock_debug_rate_set(void *data, u64 val)
 {
@@ -638,3 +641,16 @@ void clock_debug_print_enabled(void)
 
 	clock_debug_print_enabled_clocks(NULL);
 }
+
+/* add by ZTE show vdd_min and sleep clk++++ */
+void debug_suspend_enabled(void)
+{
+	debug_suspend = 1;
+}
+
+void debug_suspend_disable(void)
+{
+	debug_suspend = 0;
+}
+/* add add by ZTE show vdd_min and sleep clk end */
+

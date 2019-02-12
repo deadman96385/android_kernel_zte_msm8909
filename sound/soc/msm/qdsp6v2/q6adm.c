@@ -1254,6 +1254,11 @@ static int32_t adm_callback(struct apr_client_data *data, void *priv)
 						pr_err("%s: ADM get param error = %d, resuming\n",
 							__func__, payload[1]);
 
+					atomic_set(&this_adm.copp.stat
+						[port_idx][copp_idx], payload[1]);
+					wake_up(&this_adm.copp.wait
+							[port_idx][copp_idx]);
+
 						rtac_make_adm_callback(payload,
 							data->payload_size);
 					}

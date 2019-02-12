@@ -308,6 +308,7 @@ struct mdss_dsi_ctrl_pdata {
 	int (*set_col_page_addr) (struct mdss_panel_data *pdata);
 	int (*check_status) (struct mdss_dsi_ctrl_pdata *pdata);
 	int (*check_read_status) (struct mdss_dsi_ctrl_pdata *pdata);
+	int (*check_read_status_second) (struct mdss_dsi_ctrl_pdata *pdata);
 	int (*cmdlist_commit)(struct mdss_dsi_ctrl_pdata *ctrl, int from_mdp);
 	void (*switch_mode) (struct mdss_panel_data *pdata, int mode);
 	struct mdss_panel_data panel_data;
@@ -341,10 +342,16 @@ struct mdss_dsi_ctrl_pdata {
 	int rst_gpio;
 	int disp_en_gpio;
 	int bklt_en_gpio;
+	int lcd_5v_vsp_en_gpio;
+	int lcd_5v_vsn_en_gpio;
 	int mode_gpio;
 	int bklt_ctrl;	/* backlight ctrl */
 	bool pwm_pmi;
 	int pwm_period;
+	bool lcd_12bit_backlight;
+	bool reset_suspend_low_enabled;
+	bool vdd_vio_shutdown_enabled;
+	bool lcd_backlight_min_value_limit;
 	int pwm_pmic_gpio;
 	int pwm_lpg_chan;
 	int bklt_max;
@@ -378,7 +385,8 @@ struct mdss_dsi_ctrl_pdata {
 	u32 status_cmds_rlen;
 	u32 status_value;
 	u32 status_error_count;
-
+	struct dsi_panel_cmds status_cmds_second;
+	u32 status_value_second;
 	struct dsi_panel_cmds video2cmd;
 	struct dsi_panel_cmds cmd2video;
 
@@ -470,6 +478,7 @@ void mdss_dsi_clk_deinit(struct mdss_dsi_ctrl_pdata *ctrl_pdata);
 void mdss_dsi_shadow_clk_deinit(struct mdss_dsi_ctrl_pdata *ctrl_pdata);
 int mdss_dsi_enable_bus_clocks(struct mdss_dsi_ctrl_pdata *ctrl_pdata);
 void mdss_dsi_disable_bus_clocks(struct mdss_dsi_ctrl_pdata *ctrl_pdata);
+void mdss_dsi_panel_5v_power(struct mdss_panel_data *pdata, int enable);
 int mdss_dsi_panel_reset(struct mdss_panel_data *pdata, int enable);
 void mdss_dsi_phy_disable(struct mdss_dsi_ctrl_pdata *ctrl);
 void mdss_dsi_cmd_test_pattern(struct mdss_dsi_ctrl_pdata *ctrl);

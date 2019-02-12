@@ -103,6 +103,8 @@ static int mdss_dsi_panel_power_off(struct mdss_panel_data *pdata)
 		udelay(2000);
 	}
 
+	mdss_dsi_panel_5v_power(pdata, 0);
+
 	for (i = DSI_MAX_PM - 1; i >= 0; i--) {
 		/*
 		 * Core power module will be disabled when the
@@ -110,12 +112,21 @@ static int mdss_dsi_panel_power_off(struct mdss_panel_data *pdata)
 		 */
 		if (DSI_CORE_PM == i)
 			continue;
-		ret = msm_dss_enable_vreg(
-			ctrl_pdata->power_data[i].vreg_config,
-			ctrl_pdata->power_data[i].num_vreg, 0);
-		if (ret)
-			pr_err("%s: failed to disable vregs for %s\n",
+		/*
+		 * keep ldo6 and ldo17 on when the device go to
+		 * sleep, which may contribute to decrease power
+		 * consumption.
+		 */
+
+		if (ctrl_pdata->vdd_vio_shutdown_enabled) {
+			ret = msm_dss_enable_vreg(
+				ctrl_pdata->power_data[i].vreg_config,
+				ctrl_pdata->power_data[i].num_vreg, 0);
+			if (ret)
+				pr_err("%s: failed to disable vregs for %s\n",
 				__func__, __mdss_dsi_pm_name(i));
+		}
+
 	}
 
 end:
@@ -152,6 +163,9 @@ static int mdss_dsi_panel_power_on(struct mdss_panel_data *pdata)
 			goto error;
 		}
 	}
+
+	mdss_dsi_panel_5v_power(pdata, 1);
+
 	if (ctrl_pdata->panel_bias_vreg) {
 		pr_debug("%s: Enable panel bias vreg. ndx = %d\n",
 		       __func__, ctrl_pdata->ndx);
@@ -1865,6 +1879,33 @@ int dsi_panel_device_register(struct device_node *pan_node,
 		if (!gpio_is_valid(ctrl_pdata->disp_en_gpio))
 			pr_err("%s:%d, Disp_en gpio not specified\n",
 					__func__, __LINE__);
+	}
+
+	ctrl_pdata->lcd_5v_vsp_en_gpio = of_get_named_gpio(ctrl_pdev->dev.of_node,
+		"zte,lcd-5v-vsp-enable-gpio", 0);
+	if (!gpio_is_valid(ctrl_pdata->lcd_5v_vsp_en_gpio)) {
+		pr_err("%s:%d, qcom,lcd-5v-vsp-enable-gpio not specified\n",
+						__func__, __LINE__);
+	} else {
+		rc = gpio_request(ctrl_pdata->lcd_5v_vsp_en_gpio, "lcd_5v_vsp_en_gpio");
+		if (rc) {
+			pr_err("request lcd_5v_vsp_en_gpio failed, rc=%d\n",
+			       rc);
+			gpio_free(ctrl_pdata->lcd_5v_vsp_en_gpio);
+		}
+	}
+	ctrl_pdata->lcd_5v_vsn_en_gpio = of_get_named_gpio(ctrl_pdev->dev.of_node,
+		"zte,lcd-5v-vsn-enable-gpio", 0);
+	if (!gpio_is_valid(ctrl_pdata->lcd_5v_vsn_en_gpio)) {
+		pr_err("%s:%d, qcom,lcd-5v-vsn-enable-gpio not specified\n",
+						__func__, __LINE__);
+	} else {
+		rc = gpio_request(ctrl_pdata->lcd_5v_vsn_en_gpio, "lcd_5v_vsn_en_gpio");
+		if (rc) {
+			pr_err("request lcd_5v_vsn_en_gpio failed, rc=%d\n",
+			       rc);
+			gpio_free(ctrl_pdata->lcd_5v_vsn_en_gpio);
+		}
 	}
 
 	ctrl_pdata->disp_te_gpio = of_get_named_gpio(ctrl_pdev->dev.of_node,

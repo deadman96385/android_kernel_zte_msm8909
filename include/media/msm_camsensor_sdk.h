@@ -30,6 +30,8 @@
 #define MAX_ACT_MOD_NAME_SIZE     32
 #define MAX_ACT_NAME_SIZE         32
 #define MAX_ACTUATOR_INIT_SET     32
+/*add power down setting for actuator ZTE_CAM_LIJING_20170427*/
+#define MAX_ACTUATOR_PWDN_SET 32
 #define MAX_I2C_REG_SET           12
 
 #define MAX_NAME_SIZE             32
@@ -104,6 +106,7 @@ enum msm_sensor_power_seq_gpio_t {
 	SENSOR_GPIO_VIO,
 	SENSOR_GPIO_VANA,
 	SENSOR_GPIO_VDIG,
+	SENSOR_GPIO_VDIG_OTHER,
 	SENSOR_GPIO_VAF,
 	SENSOR_GPIO_FL_EN,
 	SENSOR_GPIO_FL_NOW,

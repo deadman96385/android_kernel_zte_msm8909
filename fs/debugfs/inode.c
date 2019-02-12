@@ -649,13 +649,11 @@ bool debugfs_initialized(void)
 }
 EXPORT_SYMBOL_GPL(debugfs_initialized);
 
-
 static struct kobject *debug_kobj;
 
 static int __init debugfs_init(void)
 {
 	int retval;
-
 	debug_kobj = kobject_create_and_add("debug", kernel_kobj);
 	if (!debug_kobj)
 		return -EINVAL;

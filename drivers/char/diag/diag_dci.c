@@ -1865,6 +1865,17 @@ static int diag_process_dci_pkt_rsp(unsigned char *buf, int len)
 					if (entry.client_id != APPS_DATA)
 						continue;
 				}
+				/*
+				 * If its a Mode non-reset command, make sure it is
+				 * handled on the Non-Apps Processor
+				 */
+				if (entry.cmd_code_lo == MODE_CMD &&
+				    entry.cmd_code_hi == MODE_CMD &&
+				    header->subsys_id != RESET_ID) {
+				    if (entry.client_id == APPS_DATA)
+						continue;
+				}
+
 				ret = diag_send_dci_pkt(entry, req_buf,
 							req_len,
 							req_entry->tag);

@@ -35,6 +35,9 @@
 #define QPNP_VIB_VTG_SET_MASK		0x1F
 #define QPNP_VIB_LOGIC_SHIFT		4
 
+static int vibrator_voltage = 0;
+module_param_named(vib_voltage,	vibrator_voltage, int, S_IRUGO | S_IWUSR | S_IWGRP);
+
 enum qpnp_vib_mode {
 	QPNP_VIB_MANUAL,
 	QPNP_VIB_DTEST1,
@@ -64,6 +67,7 @@ struct qpnp_vib {
 	int state;
 	int vtg_level;
 	int timeout;
+	int timeout_ztelog;
 	struct mutex lock;
 };
 
@@ -147,6 +151,12 @@ static int qpnp_vib_set(struct qpnp_vib *vib, int on)
 	u8 val;
 
 	if (on) {
+
+		/*zte_notes: echo 29 > sys/module/qpnp_vibrator/para8/vib* mean reset vib_volt to 2.9v*/
+		if (vibrator_voltage < QPNP_VIB_MAX_LEVEL &&  vibrator_voltage > QPNP_VIB_MIN_LEVEL)
+			vib->vtg_level = vibrator_voltage;
+		pr_info("vib on volt=%d  time=%dms\n", vib->vtg_level, vib->timeout_ztelog);
+
 		if (vib->mode != QPNP_VIB_MANUAL)
 			pwm_enable(vib->pwm_info.pwm_dev);
 		else {
@@ -188,6 +198,7 @@ static void qpnp_vib_enable(struct timed_output_dev *dev, int value)
 	else {
 		value = (value > vib->timeout ?
 				 vib->timeout : value);
+		vib->timeout_ztelog = value;
 		vib->state = 1;
 		hrtimer_start(&vib->vib_timer,
 			      ktime_set(value / 1000, (value % 1000) * 1000000),
@@ -265,6 +276,7 @@ static int qpnp_vib_parse_dt(struct qpnp_vib *vib)
 			"qcom,vib-vtg-level-mV", &temp_val);
 	if (!rc) {
 		vib->vtg_level = temp_val;
+		vibrator_voltage = vib->vtg_level;
 	} else if (rc != -EINVAL) {
 		dev_err(&spmi->dev, "Unable to read vtg level\n");
 		return rc;

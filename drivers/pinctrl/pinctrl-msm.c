@@ -22,6 +22,7 @@
 #include <linux/pinctrl/machine.h>
 #include <linux/platform_device.h>
 #include <linux/slab.h>
+
 #include "core.h"
 #include "pinconf.h"
 #include "pinctrl-msm.h"
@@ -802,6 +803,7 @@ int msm_pinctrl_probe(struct platform_device *pdev,
 	}
 	msm_register_irqchip(dd);
 	platform_set_drvdata(pdev, dd);
+
 	return 0;
 }
 EXPORT_SYMBOL(msm_pinctrl_probe);

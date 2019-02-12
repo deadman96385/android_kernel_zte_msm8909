@@ -415,7 +415,7 @@ int of_batterydata_read_data(struct device_node *batterydata_container_node,
 	best_node = NULL;
 	best_delta = 0;
 	best_id_kohm = 0;
-
+	pr_info("batt_id_kohm = %d\n", batt_id_kohm);
 	/*
 	 * Find the battery data with a battery id resistor closest to this one
 	 */

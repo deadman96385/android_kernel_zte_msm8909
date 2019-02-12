@@ -5625,9 +5625,14 @@ static int qseecom_probe(struct platform_device *pdev)
 			qseecom.ce_info.qsee_ce_hw_instance);
 		}
 
+#ifdef CONFIG_BOARD_CHAPEL
+		qseecom.appsbl_qseecom_support = 0;
+#else
 		qseecom.appsbl_qseecom_support =
 				of_property_read_bool((&pdev->dev)->of_node,
 						"qcom,appsbl-qseecom-support");
+#endif
+
 		pr_info("qseecom.appsbl_qseecom_support = 0x%x",
 				qseecom.appsbl_qseecom_support);
 

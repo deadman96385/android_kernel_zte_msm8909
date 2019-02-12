@@ -111,6 +111,9 @@ enum {
 
 #define VOLTAGE_CONVERTER(value, min_value, step_size)\
 	((value - min_value)/step_size);
+#if defined(CONFIG_BOARD_HELEN)
+extern int msm8x16_enable_external_spk_pa(int enable);
+#endif
 
 enum {
 	AIF1_PB = 0,
@@ -2804,6 +2807,11 @@ static const struct soc_enum iir2_inp1_mux_enum =
 static const struct snd_kcontrol_new ext_spk_mux =
 	SOC_DAPM_ENUM_VIRT("Ext Spk Switch Mux", ext_spk_enum);
 
+#if defined(CONFIG_BOARD_HELEN)
+static const struct snd_kcontrol_new ext_spk_pa_mux =
+	SOC_DAPM_ENUM_VIRT("Ext Spk PA Switch Mux", ext_spk_enum);
+#endif
+
 static const struct snd_kcontrol_new rx_mix1_inp1_mux =
 	SOC_DAPM_ENUM("RX1 MIX1 INP1 Mux", rx_mix1_inp1_chain_enum);
 
@@ -3218,6 +3226,23 @@ static int msm8x16_wcd_codec_enable_spk_pa(struct snd_soc_dapm_widget *w,
 	return 0;
 }
 
+#if defined(CONFIG_BOARD_HELEN)
+static int msm8x16_wcd_codec_enable_external_spk_pa(struct snd_soc_dapm_widget *w,
+				     struct snd_kcontrol *kcontrol, int event)
+{
+
+	dev_dbg(w->codec->dev, "%s %d %s\n", __func__, event, w->name);
+	if (SND_SOC_DAPM_EVENT_ON(event)) {
+		usleep_range(CODEC_DELAY_1_MS, CODEC_DELAY_1_1_MS);
+		msm8x16_enable_external_spk_pa(1);
+	} else {
+		msm8x16_enable_external_spk_pa(0);
+		usleep_range(CODEC_DELAY_1_MS, CODEC_DELAY_1_1_MS);
+	}
+	return 0;
+}
+#endif
+
 static int msm8x16_wcd_codec_enable_dig_clk(struct snd_soc_dapm_widget *w,
 				     struct snd_kcontrol *kcontrol, int event)
 {
@@ -3446,7 +3471,11 @@ static int msm8x16_wcd_codec_enable_micbias(struct snd_soc_dapm_widget *w,
 				snd_soc_update_bits(codec,
 					MSM8X16_WCD_A_ANALOG_TX_1_2_ATEST_CTL_2,
 					0x02, 0x02);
-			snd_soc_update_bits(codec, micb_int_reg, 0x80, 0x80);
+#if defined(CONFIG_BOARD_HELEN)
+			snd_soc_update_bits(codec, micb_int_reg, 0x40, 0x00);
+#else
+			snd_soc_update_bits(codec, micb_int_reg, 0x80, 0x00);
+#endif
 		} else if (strnstr(w->name, internal2_text, strlen(w->name))) {
 			snd_soc_update_bits(codec, micb_int_reg, 0x10, 0x10);
 			snd_soc_update_bits(codec, w->reg, 0x60, 0x00);
@@ -3463,7 +3492,11 @@ static int msm8x16_wcd_codec_enable_micbias(struct snd_soc_dapm_widget *w,
 	case SND_SOC_DAPM_POST_PMU:
 		usleep_range(20000, 20100);
 		if (strnstr(w->name, internal1_text, strlen(w->name))) {
+#if defined(CONFIG_BOARD_HELEN)
+			snd_soc_update_bits(codec, micb_int_reg, 0x40, 0x00);
+#else
 			snd_soc_update_bits(codec, micb_int_reg, 0x40, 0x40);
+#endif
 		} else if (strnstr(w->name, internal2_text,  strlen(w->name))) {
 			snd_soc_update_bits(codec, micb_int_reg, 0x08, 0x08);
 			msm8x16_notifier_call(codec,
@@ -3887,7 +3920,7 @@ void wcd_imped_config(struct snd_soc_codec *codec,
 		return;
 	}
 	if (value >= wcd_imped_val[ARRAY_SIZE(wcd_imped_val) - 1]) {
-		pr_err("%s, invalid imped, greater than 48 Ohm\n = %d\n",
+		pr_debug("%s, invalid imped, greater than 48 Ohm\n = %d\n",
 			__func__, value);
 		return;
 	}
@@ -4150,6 +4183,11 @@ static const struct snd_soc_dapm_route audio_map[] = {
 	{"EAR PA", NULL, "HPHL DAC"},
 	{"EAR PA", NULL, "HPHR DAC"},
 	{"EAR PA", NULL, "EAR CP"},
+
+#if defined(CONFIG_BOARD_HELEN)
+	{"External Spk PA", NULL, "External Spk PA Switch"},
+	{"External Spk PA Switch", "On", "HEADPHONE"},
+#endif
 
 	/* Headset (RX MIX1 and RX MIX2) */
 	{"HEADPHONE", NULL, "HPHL PA"},
@@ -4741,12 +4779,21 @@ static const struct snd_soc_dapm_widget msm8x16_wcd_dapm_widgets[] = {
 			SND_SOC_DAPM_PRE_PMU | SND_SOC_DAPM_POST_PMU |
 			SND_SOC_DAPM_PRE_PMD | SND_SOC_DAPM_POST_PMD),
 
+#if defined(CONFIG_BOARD_HELEN)
+	SND_SOC_DAPM_SPK("External Spk PA", msm8x16_wcd_codec_enable_external_spk_pa),
+#endif
+
 	SND_SOC_DAPM_SUPPLY("VDD_SPKDRV", SND_SOC_NOPM, 0, 0,
 			    msm89xx_wcd_codec_enable_vdd_spkr,
 			    SND_SOC_DAPM_PRE_PMU | SND_SOC_DAPM_POST_PMD),
 
 	SND_SOC_DAPM_VIRT_MUX("Ext Spk Switch", SND_SOC_NOPM, 0, 0,
 		&ext_spk_mux),
+
+#if defined(CONFIG_BOARD_HELEN)
+	SND_SOC_DAPM_VIRT_MUX("External Spk PA Switch", SND_SOC_NOPM, 0, 0,
+		&ext_spk_pa_mux),
+#endif
 
 	SND_SOC_DAPM_MIXER("RX1 MIX1", SND_SOC_NOPM, 0, 0, NULL, 0),
 	SND_SOC_DAPM_MIXER("RX2 MIX1", SND_SOC_NOPM, 0, 0, NULL, 0),

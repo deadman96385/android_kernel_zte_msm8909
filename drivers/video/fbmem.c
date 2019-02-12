@@ -1059,7 +1059,7 @@ fb_blank(struct fb_info *info, int blank)
 
 	if (info->fbops->fb_blank)
  		ret = info->fbops->fb_blank(blank, info);
-
+	pr_info("%s: ret=%d\n", __func__, ret);
 	if (!ret)
 		fb_notifier_call_chain(FB_EVENT_BLANK, &event);
 	else {

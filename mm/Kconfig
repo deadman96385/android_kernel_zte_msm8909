@@ -305,6 +305,7 @@ config MMU_NOTIFIER
 config KSM
 	bool "Enable KSM for page merging"
 	depends on MMU
+	default y
 	help
 	  Enable Kernel Samepage Merging: KSM periodically scans those areas
 	  of an application's address space that an app has advised may be
@@ -544,7 +545,7 @@ config GENERIC_EARLY_IOREMAP
 config PROCESS_RECLAIM
 	bool "Enable process reclaim"
 	depends on PROC_FS
-	default n
+	default y
 	help
 	 It allows to reclaim pages of the process by /proc/pid/reclaim.
 

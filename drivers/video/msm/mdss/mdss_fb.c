@@ -1131,7 +1131,13 @@ static struct platform_driver mdss_fb_driver = {
 static void mdss_fb_scale_bl(struct msm_fb_data_type *mfd, u32 *bl_lvl)
 {
 	u32 temp = *bl_lvl;
-
+#ifdef ZTE_DISABLE_CABL_ON_MAX_BRIGHTNESS
+	/*if the brighness equal to max brighntess 255,just return.
+	   we don't need cabl in this sitution*/
+	if (temp == 255) {
+		return;
+	}
+#endif
 	pr_debug("input = %d, scale = %d\n", temp, mfd->bl_scale);
 	if (temp >= mfd->bl_min_lvl) {
 		if (temp > mfd->panel_info->bl_max) {
@@ -1314,11 +1320,11 @@ static int mdss_fb_blank_blank(struct msm_fb_data_type *mfd,
 
 	cur_power_state = mfd->panel_power_state;
 
-	pr_debug("Transitioning from %d --> %d\n", cur_power_state,
+	pr_info("Transitioning from %d --> %d\n", cur_power_state,
 		req_power_state);
 
 	if (cur_power_state == req_power_state) {
-		pr_debug("No change in power state\n");
+		pr_err("No change in power state\n");
 		return 0;
 	}
 
@@ -1525,6 +1531,7 @@ static int mdss_fb_blank(int blank_mode, struct fb_info *info)
 	struct msm_fb_data_type *mfd = (struct msm_fb_data_type *)info->par;
 
 	mdss_fb_pan_idle(mfd);
+	pr_info("mode: %d mfd->op_enable %d\n", blank_mode, mfd->op_enable);
 	if (mfd->op_enable == 0) {
 		if (blank_mode == FB_BLANK_UNBLANK)
 			mfd->suspend.panel_power_state = MDSS_PANEL_POWER_ON;
@@ -1536,7 +1543,7 @@ static int mdss_fb_blank(int blank_mode, struct fb_info *info)
 			mfd->suspend.panel_power_state = MDSS_PANEL_POWER_OFF;
 		return 0;
 	}
-	pr_debug("mode: %d\n", blank_mode);
+
 
 	pdata = dev_get_platdata(&mfd->pdev->dev);
 

@@ -36,10 +36,13 @@
 
 #include <asm/mach/arch.h>
 #include <asm/mach/map.h>
+#include <soc/qcom/vendor/sdlog_mem_reserve.h>
+
 
 #include "mm.h"
 
 static unsigned long phys_initrd_start __initdata = 0;
+
 static unsigned long phys_initrd_size __initdata = 0;
 int msm_krait_need_wfe_fixup;
 EXPORT_SYMBOL(msm_krait_need_wfe_fixup);
@@ -398,7 +401,7 @@ void __init arm_memblock_init(const struct machine_desc *mdesc)
 		mdesc->reserve();
 
 	early_init_fdt_scan_reserved_mem();
-
+	sdlog_memory_reserve();
 	/*
 	 * reserve memory for DMA contigouos allocations,
 	 * must come from DMA area inside low memory

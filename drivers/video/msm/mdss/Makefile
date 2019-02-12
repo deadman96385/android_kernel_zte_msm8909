@@ -24,7 +24,9 @@ ifneq ($(CONFIG_ARCH_MSM8909),y)
 dsi-v2-objs = dsi_v2.o dsi_host_v2.o dsi_io_v2.o
 obj-$(CONFIG_FB_MSM_MDSS_MDP3) += dsi-v2.o
 endif
-
+ifeq ($(ZTE_DISABLE_CABL_ON_MAX_BRIGHTNESS), true)
+ccflags-y += -DZTE_DISABLE_CABL_ON_MAX_BRIGHTNESS
+endif
 mdss-dsi-objs := mdss_dsi.o mdss_dsi_host.o mdss_dsi_cmd.o mdss_dsi_status.o
 mdss-dsi-objs += mdss_dsi_panel.o
 mdss-dsi-objs += msm_mdss_io_8974.o

@@ -23,6 +23,11 @@
 #include <linux/err.h>
 
 #include "mdss_dsi.h"
+#include <soc/qcom/socinfo.h>
+
+#include <linux/proc_fs.h>
+static struct proc_dir_entry *d_entry;
+static char  module_name[50] = {"0"};
 
 #define DT_CMD_HDR 6
 
@@ -35,7 +40,47 @@
 #define MIN_REFRESH_RATE 48
 #define DEFAULT_MDP_TRANSFER_TIME 14000
 
+
 DEFINE_LED_TRIGGER(bl_led_trigger);
+
+
+ssize_t mdss_dsi_panel_lcd_read_proc(struct file *file, char __user *page, size_t size, loff_t *ppos)
+{
+	int len = 0;
+
+	pr_info("%s:---enter---\n", __func__);
+	if (*ppos) {
+	return 0;
+	}
+	len = snprintf(page, size, "%s\n",  module_name);
+	*ppos += len;
+	return len;
+}
+static const struct file_operations proc_ops = {
+	.owner = THIS_MODULE,
+	.read = mdss_dsi_panel_lcd_read_proc,
+	.write = NULL,
+};
+
+void  mdss_dsi_panel_lcd_proc(struct device_node *node)
+{
+	const char *panel_name;
+
+	d_entry = proc_create("msm_lcd", 0664, NULL, &proc_ops);
+	if (d_entry == NULL) {
+		pr_err("proc_create ts_information failed!\n");
+	}
+	panel_name = of_get_property(node,
+		"qcom,mdss-dsi-panel-name", NULL);
+	if (!panel_name) {
+		pr_info("LCD %s:%d, panel name not found!\n",
+				__func__,  __LINE__);
+	} else {
+		pr_info("LCD%s: Panel Name = %s\n", __func__, panel_name);
+		strlcpy(module_name, panel_name, sizeof(module_name));
+	}
+}
+
 
 void mdss_dsi_panel_pwm_cfg(struct mdss_dsi_ctrl_pdata *ctrl)
 {
@@ -182,23 +227,84 @@ static struct dsi_cmd_desc backlight_cmd = {
 	led_pwm1
 };
 
+static  unsigned char led_pwm_12bit[3] = {0x51, 0x00, 0x00};
+static struct dsi_cmd_desc backlight_cmd_12bit = {
+	{DTYPE_DCS_LWRITE, 1, 0, 0, 1, sizeof(led_pwm_12bit)},
+	led_pwm_12bit
+};
+#ifdef ZTE_FASTMMI_MANUFACTURING_VERSION
+#define PV_FASTMMI_MAX_LEVEL  255
+#define PV_FASTMMI_HALF_LEVEL 127
+#define PV_FASTMMI_ZERO_LEVEL 0
+#define PV_FASTMMI_TRUE      1
+#define PV_FASTMMI_FALSE    0
+#endif
 static void mdss_dsi_panel_bklt_dcs(struct mdss_dsi_ctrl_pdata *ctrl, int level)
 {
 	struct dcs_cmd_req cmdreq;
 	struct mdss_panel_info *pinfo;
+#ifdef ZTE_FASTMMI_MANUFACTURING_VERSION
+	static int initpvflag = PV_FASTMMI_FALSE;
+#endif
+	int poweroffcharge;
+	int recovery_mode;
+	int ftm_mode;
+
+	poweroffcharge = socinfo_get_charging_flag();
+	recovery_mode = socinfo_get_recovery_flag();
+	ftm_mode = socinfo_get_ftm_flag();
+
+
+	if (poweroffcharge || ftm_mode) {
+		if (level == 127 || level == 255)
+			level = 0;
+	}
+
+	/* when enter recovery mode, lcd backlight will be overwritten,
+	 * which may cause flash screen problem.
+	 * actually it is better to control bl by recovery mode itself.
+	 */
+	if (recovery_mode) {
+		if (level == 127)
+			level = 0;
+	}
 
 	pinfo = &(ctrl->panel_data.panel_info);
 	if (pinfo->dcs_cmd_by_left) {
 		if (ctrl->ndx != DSI_CTRL_LEFT)
 			return;
 	}
+	if (ctrl->lcd_backlight_min_value_limit) {
+		if (level > 0 && level <= 4)
+			level = 4;
+	}
+	pr_info("%s: level=%d\n", __func__, level);
+#ifdef ZTE_FASTMMI_MANUFACTURING_VERSION
+	if (initpvflag == PV_FASTMMI_FALSE) {
+		if (level == PV_FASTMMI_ZERO_LEVEL || level == PV_FASTMMI_MAX_LEVEL || level == PV_FASTMMI_HALF_LEVEL)
+			initpvflag = PV_FASTMMI_FALSE;
+		else
+			initpvflag = PV_FASTMMI_TRUE;
+	}
+	if (initpvflag == PV_FASTMMI_FALSE)
+		return;
+#endif
 
-	pr_debug("%s: level=%d\n", __func__, level);
+	if (ctrl->lcd_12bit_backlight) {
+		unsigned int new_level = level*4095/255;
 
-	led_pwm1[1] = (unsigned char)level;
+		led_pwm_12bit[2] = (unsigned char)((new_level>>8)&0x0f);
+		led_pwm_12bit[1] = (unsigned char)(new_level&0xff);
+	} else {
+		led_pwm1[1] = (unsigned char)level;
+	}
 
 	memset(&cmdreq, 0, sizeof(cmdreq));
-	cmdreq.cmds = &backlight_cmd;
+	if (ctrl->lcd_12bit_backlight) {
+		cmdreq.cmds = &backlight_cmd_12bit;
+	} else {
+		cmdreq.cmds = &backlight_cmd;
+	}
 	cmdreq.cmds_cnt = 1;
 	cmdreq.flags = CMD_REQ_COMMIT | CMD_CLK_CTRL;
 	cmdreq.rlen = 0;
@@ -327,7 +433,14 @@ int mdss_dsi_panel_reset(struct mdss_panel_data *pdata, int enable)
 			gpio_set_value((ctrl_pdata->disp_en_gpio), 0);
 			gpio_free(ctrl_pdata->disp_en_gpio);
 		}
-		gpio_set_value((ctrl_pdata->rst_gpio), 0);
+		/*
+		 * keep rst gpio high when the device go to sleep,
+		 * to decrease power consumption according to hw.
+		 */
+		if (ctrl_pdata->reset_suspend_low_enabled)
+			gpio_set_value((ctrl_pdata->rst_gpio), 0);
+		else
+			gpio_set_value((ctrl_pdata->rst_gpio), 1);
 		gpio_free(ctrl_pdata->rst_gpio);
 		if (gpio_is_valid(ctrl_pdata->mode_gpio))
 			gpio_free(ctrl_pdata->mode_gpio);
@@ -535,6 +648,53 @@ static void mdss_dsi_panel_switch_mode(struct mdss_panel_data *pdata,
 
 	return;
 }
+
+void mdss_dsi_panel_5v_power(struct mdss_panel_data *pdata, int enable)
+{
+	struct mdss_dsi_ctrl_pdata *ctrl_pdata = NULL;
+
+
+	if (pdata == NULL) {
+		pr_err("%s: Invalid input data\n", __func__);
+		return;
+	}
+
+	ctrl_pdata = container_of(pdata, struct mdss_dsi_ctrl_pdata,
+				panel_data);
+
+	if (!gpio_is_valid(ctrl_pdata->lcd_5v_vsp_en_gpio)) {
+		pr_err("%s:%d, lcd_5v_vsp_en_gpio not configured\n",
+			   __func__, __LINE__);
+		return;
+	}
+	if (!gpio_is_valid(ctrl_pdata->lcd_5v_vsn_en_gpio)) {
+		pr_err("%s:%d, lcd_5v_vsn_en_gpio not configured\n",
+			   __func__, __LINE__);
+		return;
+	}
+	pr_debug("LCD 5v_power GPIO(vsp):%d, GPIO(vsn):%d Enable:%d\n",
+			   ctrl_pdata->lcd_5v_vsp_en_gpio,
+			   ctrl_pdata->lcd_5v_vsn_en_gpio, enable);
+
+	if (enable) {
+		if (gpio_is_valid(ctrl_pdata->lcd_5v_vsp_en_gpio)) {
+			gpio_set_value((ctrl_pdata->lcd_5v_vsp_en_gpio), 1);
+		}
+		if (gpio_is_valid(ctrl_pdata->lcd_5v_vsn_en_gpio)) {
+			gpio_set_value((ctrl_pdata->lcd_5v_vsn_en_gpio), 1);
+		}
+		msleep(20);
+
+	} else {
+		if (gpio_is_valid(ctrl_pdata->lcd_5v_vsp_en_gpio))
+			gpio_set_value((ctrl_pdata->lcd_5v_vsp_en_gpio), 0);
+
+		if (gpio_is_valid(ctrl_pdata->lcd_5v_vsn_en_gpio))
+			gpio_set_value((ctrl_pdata->lcd_5v_vsn_en_gpio), 0);
+
+	}
+}
+
 
 static void mdss_dsi_panel_bl_ctrl(struct mdss_panel_data *pdata,
 							u32 bl_level)
@@ -1063,6 +1223,24 @@ static int mdss_dsi_gen_read_status(struct mdss_dsi_ctrl_pdata *ctrl_pdata)
 	}
 }
 
+static int mdss_dsi_gen_read_status_second(struct mdss_dsi_ctrl_pdata *ctrl_pdata)
+{
+	struct mdss_panel_info *pinfo = &ctrl_pdata->panel_data.panel_info;
+
+	if(!pinfo->esd_check_enabled_second) {
+		return 1;
+	}
+
+	if (ctrl_pdata->status_buf.data[0] !=
+					ctrl_pdata->status_value_second) {
+		pr_err("%s: Read back value from panel is incorrect\n",
+							__func__);
+		return -EINVAL;
+	} else {
+		return 1;
+	}
+}
+
 static int mdss_dsi_nt35596_read_status(struct mdss_dsi_ctrl_pdata *ctrl_pdata)
 {
 	if (ctrl_pdata->status_buf.data[0] !=
@@ -1165,7 +1343,8 @@ static int mdss_dsi_parse_panel_features(struct device_node *np,
 		(pinfo->ulps_feature_enabled ? "enabled" : "disabled"));
 	pinfo->esd_check_enabled = of_property_read_bool(np,
 		"qcom,esd-check-enabled");
-
+	pinfo->esd_check_enabled_second = of_property_read_bool(np,
+		"qcom,esd-check-enabled-second");
 	pinfo->ulps_suspend_enabled = of_property_read_bool(np,
 		"qcom,suspend-ulps-enabled");
 	pr_info("%s: ulps during suspend feature %s", __func__,
@@ -1625,10 +1804,26 @@ static int mdss_panel_parse_dt(struct device_node *np,
 			}
 		} else if (!strncmp(data, "bl_ctrl_dcs", 11)) {
 			ctrl_pdata->bklt_ctrl = BL_DCS_CMD;
+			ctrl_pdata->lcd_12bit_backlight = of_property_read_bool(np,
+					"zte,lcd-12bit-backlight-enable");
+			pr_info("%s:%d, lcd_12bit_backlight %d\n",
+						__func__, __LINE__, ctrl_pdata->lcd_12bit_backlight);
 			pr_debug("%s: Configured DCS_CMD bklt ctrl\n",
 								__func__);
 		}
 	}
+	ctrl_pdata->reset_suspend_low_enabled = of_property_read_bool(np,
+			"zte,reset-suspend-low-enabled");
+	pr_info("%s:%d, reset_suspend_low_enabled %d\n", __func__, __LINE__
+		, ctrl_pdata->reset_suspend_low_enabled);
+	ctrl_pdata->vdd_vio_shutdown_enabled = of_property_read_bool(np,
+			"zte,vdd-vio-shutdown-enabled");
+	pr_info("%s:%d, vdd_vio_shutdown_enabled %d\n", __func__, __LINE__
+		, ctrl_pdata->vdd_vio_shutdown_enabled);
+	ctrl_pdata->lcd_backlight_min_value_limit = of_property_read_bool(np,
+			"zte,lcd-backlight-min-value-limit");
+	pr_info("%s:%d, lcd_backlight_min_value_limit %d\n", __func__, __LINE__
+		, ctrl_pdata->lcd_backlight_min_value_limit);
 	rc = of_property_read_u32(np, "qcom,mdss-brightness-max-level", &tmp);
 	pinfo->brightness_max = (!rc ? tmp : MDSS_MAX_BL_BRIGHTNESS);
 	rc = of_property_read_u32(np, "qcom,mdss-dsi-bl-min-level", &tmp);
@@ -1788,6 +1983,11 @@ static int mdss_panel_parse_dt(struct device_node *np,
 	rc = of_property_read_u32(np, "qcom,mdss-dsi-panel-status-value", &tmp);
 	ctrl_pdata->status_value = (!rc ? tmp : 0);
 
+	mdss_dsi_parse_dcs_cmds(np, &ctrl_pdata->status_cmds_second,
+			"qcom,mdss-dsi-panel-status-command-second",
+				"qcom,mdss-dsi-panel-status-command-state");
+	rc = of_property_read_u32(np, "qcom,mdss-dsi-panel-status-value-second", &tmp);
+	ctrl_pdata->status_value_second = (!rc ? tmp : 0);
 
 	ctrl_pdata->status_mode = ESD_MAX;
 	rc = of_property_read_string(np,
@@ -1800,6 +2000,8 @@ static int mdss_panel_parse_dt(struct device_node *np,
 			ctrl_pdata->status_cmds_rlen = 1;
 			ctrl_pdata->check_read_status =
 						mdss_dsi_gen_read_status;
+			ctrl_pdata->check_read_status_second =
+						mdss_dsi_gen_read_status_second;
 		} else if (!strcmp(data, "reg_read_nt35596")) {
 			ctrl_pdata->status_mode = ESD_REG_NT35596;
 			ctrl_pdata->status_error_count = 0;
@@ -1883,6 +2085,7 @@ int mdss_dsi_panel_init(struct device_node *node,
 	ctrl_pdata->low_power_config = mdss_dsi_panel_low_power_config;
 	ctrl_pdata->panel_data.set_backlight = mdss_dsi_panel_bl_ctrl;
 	ctrl_pdata->switch_mode = mdss_dsi_panel_switch_mode;
+	mdss_dsi_panel_lcd_proc(node);
 
 	return 0;
 }

@@ -735,6 +735,12 @@ static int req_crypt_endio(struct dm_target *ti, struct request *clone,
 	struct bio_vec *bvec = NULL;
 	struct req_dm_crypt_io *req_io = map_context->ptr;
 
+	/* If it is for flush or discard, free up req_io and return */
+	if (clone->cmd_flags & (REQ_FLUSH | REQ_DISCARD)) {
+		mempool_free(req_io, req_io_pool);
+		goto submit_request;
+	}
+
 	/* If it is a write request, do nothing just return. */
 	bvec = NULL;
 	if (rq_data_dir(clone) == WRITE) {
@@ -831,7 +837,8 @@ static int req_crypt_map(struct dm_target *ti, struct request *clone,
 		blk_queue_bounce(clone->q, &bio_src);
 	}
 
-	if (rq_data_dir(clone) == READ) {
+	if (rq_data_dir(clone) == READ ||
+		(clone->cmd_flags & (REQ_FLUSH | REQ_DISCARD))) {
 		error = DM_MAPIO_REMAPPED;
 		goto submit_request;
 	} else if (rq_data_dir(clone) == WRITE) {
@@ -1054,6 +1061,13 @@ static int req_crypt_ctr(struct dm_target *ti, unsigned int argc, char **argv)
 	req_scatterlist_pool = mempool_create_slab_pool(MIN_IOS,
 					_req_dm_scatterlist_pool);
 	BUG_ON(!req_scatterlist_pool);
+
+	/*
+	 * If underlying device supports flush/discard, mapped target
+	 * should also allow it
+	 */
+	ti->num_flush_bios = 1;
+	ti->num_discard_bios = 1;
 
 	err = 0;
 

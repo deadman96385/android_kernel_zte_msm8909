@@ -652,6 +652,9 @@ static inline void cpu_unprepare(struct lpm_cluster *cluster, int cpu_index,
 		clockevents_notify(CLOCK_EVT_NOTIFY_BROADCAST_EXIT, &cpu);
 }
 
+/*ZTE ++++*/
+extern bool zte_msm_cpu_pm_enter_sleep(enum msm_pm_sleep_mode mode, bool from_idle);
+extern void zte_pm_before_powercollapse(void);
 static int lpm_cpuidle_enter(struct cpuidle_device *dev,
 		struct cpuidle_driver *drv, int index)
 {
@@ -897,6 +900,7 @@ static int lpm_suspend_enter(suspend_state_t state)
 	cpu_prepare(cluster, idx, false);
 	cluster_prepare(cluster, cpumask, idx, false);
 	msm_cpu_pm_enter_sleep(cluster->cpu->levels[idx].mode, false);
+	zte_pm_before_powercollapse();/*ZTE add:suspend->PC*/
 	cluster_unprepare(cluster, cpumask, idx, false);
 	cpu_unprepare(cluster, idx, false);
 	return 0;

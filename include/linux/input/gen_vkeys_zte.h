@@ -1,4 +1,4 @@
-/* Copyright (c) 2011, 2014, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2013, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -8,17 +8,22 @@
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
- *
  */
 
-#include <linux/module.h>
-#include <linux/kernel.h>
-#include <linux/init.h>
 
-/*ZTE_PM ++++ */
-int msm_show_resume_irq_mask = 1;
-/*ZTE_PM ----*/
-
-module_param_named(
-	debug_mask, msm_show_resume_irq_mask, int, S_IRUGO | S_IWUSR | S_IWGRP
-);
+#ifndef __GEN_VKEYS_
+struct vkeys_platform_data {
+	const char *name;
+	int disp_maxx_mm;
+	int disp_maxy_mm;
+	int disp_maxy_px;
+	int x1;
+	int x2;
+	int x3;
+	int lcd_offset;
+	int y_max_offset;
+	int dx;
+	int *keycodes;
+	int num_keys;
+};
+#endif

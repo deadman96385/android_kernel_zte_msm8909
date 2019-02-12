@@ -27,8 +27,26 @@
 #include "diag_usb.h"
 #include "diag_mux.h"
 #include "diagmem.h"
-
+/*begin-3 -TF project, encrypt the DiagPort -zhenghuan 2014/12/23*/
+#include "diagfwd.h"
+/*end-3 -TF project, encrypt the DiagPort -zhenghuan 2014/12/23*/
 #define DIAG_USB_STRING_SZ	10
+
+#ifdef DIAG_LOCK_ON
+static int diag_locked = 1;
+#endif
+
+#ifdef ZTE_FEATURE_TF_SECURITY_SYSTEM
+int is_diag_locked(void)
+{
+#ifdef DIAG_LOCK_ON
+	return  diag_locked;
+#else
+	return 0;
+#endif
+}
+EXPORT_SYMBOL(is_diag_locked);
+#endif
 
 struct diag_usb_info diag_usb[NUM_DIAG_USB_DEV] = {
 	{
@@ -276,7 +294,11 @@ int diag_usb_write(int id, unsigned char *buf, int len, int ctxt)
 	int err = 0;
 	struct diag_request *req = NULL;
 	struct diag_usb_info *usb_info = NULL;
-
+/*begin-1 -TF project, encrypt the DiagPort -zhenghuan 2014/12/23*/
+#ifdef DIAG_LOCK_ON
+	const unsigned char *ptr_buf = buf;
+#endif
+/*end-1 -TF project, encrypt the DiagPort -zhenghuan 2014/12/23*/
 	if (id < 0 || id >= NUM_DIAG_USB_DEV) {
 		pr_err_ratelimited("diag: In %s, Incorrect id %d\n",
 				   __func__, id);
@@ -309,6 +331,19 @@ int diag_usb_write(int id, unsigned char *buf, int len, int ctxt)
 		diagmem_free(driver, req, usb_info->mempool);
 		return -ENODEV;
 	}
+
+/*begin-2 -TF project, encrypt the DiagPort -zhenghuan 2014/12/23*/
+#ifdef DIAG_LOCK_ON
+	if (diag_locked && ptr_buf[0] == 0x4b
+		&& ptr_buf[1] == 0xfb
+		&& ptr_buf[2] == 0x02
+		&& ptr_buf[3] == 0x00
+		&& ptr_buf[4] == 0x01) {  /*0x4b 0xfb 0x02 0x00 0x01 is TF unencrypt key*/
+		diag_locked = 0;
+	}
+#endif
+/*end-2 -TF project, encrypt the DiagPort -zhenghuan 2014/12/23*/
+
 	err = usb_diag_write(usb_info->hdl, req);
 	if (err) {
 		pr_err_ratelimited("diag: In %s, error writing to usb channel %s, err: %d\n",

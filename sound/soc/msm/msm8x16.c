@@ -69,6 +69,10 @@
 
 #define MAX_AUX_CODECS	2
 
+#if defined(CONFIG_BOARD_HELEN)
+#define SPK_PA_EN_PULSE_NUM 10
+#endif
+
 enum btsco_rates {
 	RATE_8KHZ_ID,
 	RATE_16KHZ_ID,
@@ -81,6 +85,20 @@ static int msm_mi2s_tx_ch = 2;
 static int msm_pri_mi2s_rx_ch = 2;
 static int pri_rx_sample_rate = SAMPLING_RATE_48KHZ;
 static int mi2s_tx_sample_rate = SAMPLING_RATE_48KHZ;
+#if defined(CONFIG_BOARD_GEMI) || defined(CONFIG_BOARD_KELLY) || defined(CONFIG_BOARD_LEWIS) ||\
+	defined(CONFIG_BOARD_SAPPHIRE) || defined(CONFIG_BOARD_GRAYJOYLITE) || defined(CONFIG_BOARD_CALBEE)
+static int ext_spk_boost_enable;
+static int ext_spk_boost_gpio = -1;
+#endif
+#if defined(CONFIG_BOARD_HELEN)
+static int spk_hs_swtich_status;
+static int ext_spk_pa_gpio = -1;
+static int ext_spk_hs_switch_gpio = -1;
+#endif
+#if defined(CONFIG_BOARD_SAPPHIRE)
+static int spk_eap_swtich_status;
+static int ext_spk_eap_switch_gpio = -1;
+#endif
 
 static int msm_proxy_rx_ch = 2;
 static int msm8909_auxpcm_rate = 8000;
@@ -109,7 +127,7 @@ static struct wcd_mbhc_config mbhc_cfg = {
 	.swap_gnd_mic = NULL,
 	.hs_ext_micbias = false,
 	.key_code[0] = KEY_MEDIA,
-	.key_code[1] = KEY_VOICECOMMAND,
+	.key_code[1] = KEY_VOLUMEUP,
 	.key_code[2] = KEY_VOLUMEUP,
 	.key_code[3] = KEY_VOLUMEDOWN,
 	.key_code[4] = 0,
@@ -414,6 +432,16 @@ static char const *pri_rx_sample_rate_text[] = {"KHZ_48", "KHZ_96",
 static char const *mi2s_tx_sample_rate_text[] = {"KHZ_48", "KHZ_96",
 					"KHZ_192", "KHZ_8",
 					"KHZ_16", "KHZ_32"};
+#if defined(CONFIG_BOARD_GEMI) || defined(CONFIG_BOARD_KELLY) || defined(CONFIG_BOARD_LEWIS) ||\
+	defined(CONFIG_BOARD_SAPPHIRE) || defined(CONFIG_BOARD_GRAYJOYLITE) || defined(CONFIG_BOARD_CALBEE)
+static const char *const ext_spk_boost_text[] = {"Off", "On"};
+#endif
+#if defined(CONFIG_BOARD_HELEN)
+static const char *const spk_headset_switch[] = {"Spk", "Hs"};
+#endif
+#if defined(CONFIG_BOARD_SAPPHIRE)
+static const char *const spk_earpiece_switch[] = {"Spk", "Eap"};
+#endif
 
 static int msm_auxpcm_be_params_fixup(struct snd_soc_pcm_runtime *rtd,
 					struct snd_pcm_hw_params *params)
@@ -914,6 +942,100 @@ static int msm_mi2s_tx_ch_put(struct snd_kcontrol *kcontrol,
 	return 1;
 }
 
+#if defined(CONFIG_BOARD_GEMI) || defined(CONFIG_BOARD_KELLY) || defined(CONFIG_BOARD_LEWIS) ||\
+	defined(CONFIG_BOARD_SAPPHIRE) || defined(CONFIG_BOARD_GRAYJOYLITE) || defined(CONFIG_BOARD_CALBEE)
+static int ext_spk_boost_get(struct snd_kcontrol *kcontrol,
+		       struct snd_ctl_elem_value *ucontrol)
+{
+	pr_debug("%s:ext_spk_boost_get ext_spk_boost_enable(%d)\n",
+			 __func__, ext_spk_boost_enable);
+	ucontrol->value.integer.value[0] = ext_spk_boost_enable;
+	return 0;
+}
+
+static int ext_spk_boost_put(struct snd_kcontrol *kcontrol,
+		       struct snd_ctl_elem_value *ucontrol)
+{
+	pr_debug("%s:ext_spk_boost_put ext_spk_boost_enable(%d), put val(%ld)\n",
+			 __func__, ext_spk_boost_enable, ucontrol->value.integer.value[0]);
+	if (ext_spk_boost_enable == ucontrol->value.integer.value[0])
+		return 0;
+
+	ext_spk_boost_enable = ucontrol->value.integer.value[0];
+	gpio_direction_output(ext_spk_boost_gpio, ext_spk_boost_enable);
+
+	return 1;
+}
+#endif
+
+#if defined(CONFIG_BOARD_HELEN)
+static int spk_hs_switch_get(struct snd_kcontrol *kcontrol,
+		       struct snd_ctl_elem_value *ucontrol)
+{
+	pr_debug("%s:spk_hs_switch_get spk_hs_swtich_status(%d)\n",
+			 __func__, spk_hs_swtich_status);
+	ucontrol->value.integer.value[0] = spk_hs_swtich_status;
+	return 0;
+}
+
+static int spk_hs_switch_put(struct snd_kcontrol *kcontrol,
+		       struct snd_ctl_elem_value *ucontrol)
+{
+	pr_debug("%s:spk_hs_switch_put spk_hs_swtich_status(%d), put val(%ld)\n",
+			 __func__, spk_hs_swtich_status, ucontrol->value.integer.value[0]);
+	if (spk_hs_swtich_status == ucontrol->value.integer.value[0])
+		return 0;
+
+	spk_hs_swtich_status = ucontrol->value.integer.value[0];
+	gpio_direction_output(ext_spk_hs_switch_gpio, spk_hs_swtich_status);
+
+	return 1;
+}
+
+int msm8x16_enable_external_spk_pa(int enable)
+{
+	u8 i = 0;
+
+	pr_debug("%s:ext_spk_pa_get ext_spk_pa_enable(%d)\n",
+			 __func__, enable);
+	if (enable) {
+		for (i = 0; i < SPK_PA_EN_PULSE_NUM; i++) {
+			gpio_direction_output(ext_spk_pa_gpio, (i%2) ? 0 : 1);
+			udelay(2);
+		}
+	}
+
+	gpio_direction_output(ext_spk_pa_gpio, enable);
+	return 1;
+}
+EXPORT_SYMBOL(msm8x16_enable_external_spk_pa);
+#endif
+
+#if defined(CONFIG_BOARD_SAPPHIRE)
+static int spk_eap_switch_get(struct snd_kcontrol *kcontrol,
+		       struct snd_ctl_elem_value *ucontrol)
+{
+	pr_debug("%s:spk_earpiece_switch_get spk_earpiece_swtich_status(%d)\n",
+			 __func__, spk_eap_swtich_status);
+	ucontrol->value.integer.value[0] = spk_eap_swtich_status;
+	return 0;
+}
+
+static int spk_eap_switch_put(struct snd_kcontrol *kcontrol,
+		       struct snd_ctl_elem_value *ucontrol)
+{
+	pr_debug("%s:spk_earpiece_switch_put spk_earpiece_swtich_status(%d), put val(%ld)\n",
+			 __func__, spk_eap_swtich_status, ucontrol->value.integer.value[0]);
+	if (spk_eap_swtich_status == ucontrol->value.integer.value[0])
+		return 0;
+
+	spk_eap_swtich_status = ucontrol->value.integer.value[0];
+	gpio_direction_output(ext_spk_eap_switch_gpio, spk_eap_swtich_status);
+
+	return 1;
+}
+#endif
+
 static int msm_mi2s_snd_hw_params(struct snd_pcm_substream *substream,
 			     struct snd_pcm_hw_params *params)
 {
@@ -1188,6 +1310,16 @@ static const struct soc_enum msm_snd_enum[] = {
 	SOC_ENUM_SINGLE_EXT(2, loopback_mclk_text),
 	SOC_ENUM_SINGLE_EXT(6, pri_rx_sample_rate_text),
 	SOC_ENUM_SINGLE_EXT(6, mi2s_tx_sample_rate_text),
+#if defined(CONFIG_BOARD_GEMI) || defined(CONFIG_BOARD_KELLY) || defined(CONFIG_BOARD_LEWIS) ||\
+	defined(CONFIG_BOARD_SAPPHIRE) || defined(CONFIG_BOARD_GRAYJOYLITE) || defined(CONFIG_BOARD_CALBEE)
+	SOC_ENUM_SINGLE_EXT(2, ext_spk_boost_text),
+#endif
+#if defined(CONFIG_BOARD_HELEN)
+	SOC_ENUM_SINGLE_EXT(2, spk_headset_switch),
+#endif
+#if defined(CONFIG_BOARD_SAPPHIRE)
+	SOC_ENUM_SINGLE_EXT(2, spk_earpiece_switch),
+#endif
 };
 
 static const char *const btsco_rate_text[] = {"BTSCO_RATE_8KHZ",
@@ -1211,6 +1343,19 @@ static const struct snd_kcontrol_new msm_snd_controls[] = {
 			pri_rx_sample_rate_get, pri_rx_sample_rate_put),
 	SOC_ENUM_EXT("MI2S TX SampleRate", msm_snd_enum[4],
 			mi2s_tx_sample_rate_get, mi2s_tx_sample_rate_put),
+#if defined(CONFIG_BOARD_GEMI) || defined(CONFIG_BOARD_KELLY) || defined(CONFIG_BOARD_LEWIS) ||\
+	defined(CONFIG_BOARD_SAPPHIRE) || defined(CONFIG_BOARD_GRAYJOYLITE) || defined(CONFIG_BOARD_CALBEE)
+	SOC_ENUM_EXT("External Spk Boost", msm_snd_enum[5],
+			ext_spk_boost_get, ext_spk_boost_put),
+#endif
+#if defined(CONFIG_BOARD_HELEN)
+	SOC_ENUM_EXT("Spk Headset Switch", msm_snd_enum[5],
+			spk_hs_switch_get, spk_hs_switch_put),
+#endif
+#if defined(CONFIG_BOARD_SAPPHIRE)
+	SOC_ENUM_EXT("Spk Earpiece Switch", msm_snd_enum[6],
+			spk_eap_switch_get, spk_eap_switch_put),
+#endif
 };
 
 static int msm8x16_mclk_event(struct snd_soc_dapm_widget *w,
@@ -1712,7 +1857,7 @@ static void *def_msm8x16_wcd_mbhc_cal(void)
 	}
 
 #define S(X, Y) ((WCD_MBHC_CAL_PLUG_TYPE_PTR(msm8x16_wcd_cal)->X) = (Y))
-	S(v_hs_max, 1500);
+	S(v_hs_max, 1700);
 #undef S
 #define S(X, Y) ((WCD_MBHC_CAL_BTN_DET_PTR(msm8x16_wcd_cal)->X) = (Y))
 	S(num_btn, WCD_MBHC_DEF_BUTTONS);
@@ -1737,8 +1882,8 @@ static void *def_msm8x16_wcd_mbhc_cal(void)
 	 */
 	btn_low[0] = 75;
 	btn_high[0] = 75;
-	btn_low[1] = 150;
-	btn_high[1] = 150;
+	btn_low[1] = 125;
+	btn_high[1] = 125;
 	btn_low[2] = 237;
 	btn_high[2] = 237;
 	btn_low[3] = 450;
@@ -1773,6 +1918,9 @@ static int msm_audrx_init(struct snd_soc_pcm_runtime *rtd)
 
 	snd_soc_dapm_ignore_suspend(dapm, "EAR");
 	snd_soc_dapm_ignore_suspend(dapm, "HEADPHONE");
+#if defined(CONFIG_BOARD_HELEN)
+	snd_soc_dapm_ignore_suspend(dapm, "External Spk PA");
+#endif
 	snd_soc_dapm_ignore_suspend(dapm, "SPK_OUT");
 	snd_soc_dapm_ignore_suspend(dapm, "AMIC1");
 	snd_soc_dapm_ignore_suspend(dapm, "AMIC2");
@@ -3191,7 +3339,98 @@ static int msm8x16_asoc_machine_probe(struct platform_device *pdev)
 			return -EINVAL;
 		}
 	}
+#if defined(CONFIG_BOARD_GEMI) || defined(CONFIG_BOARD_KELLY) || defined(CONFIG_BOARD_LEWIS) ||\
+	defined(CONFIG_BOARD_SAPPHIRE) || defined(CONFIG_BOARD_GRAYJOYLITE) || defined(CONFIG_BOARD_CALBEE)
+	ext_spk_boost_gpio = of_get_named_gpio(pdev->dev.of_node,
+				"qcom,msm-spk-ext-boost", 0);
+	if (ext_spk_boost_gpio < 0) {
+		dev_dbg(&pdev->dev,
+			"%s: missing msm-spk-ext-boost in dt node\n", __func__);
+	} else {
+		if (!gpio_is_valid(ext_spk_boost_gpio)) {
+			pr_err("%s: Invalid external speaker gpio: %d",
+				__func__, ext_spk_boost_gpio);
+			return -EINVAL;
+		}
+		gpio_free(ext_spk_boost_gpio);
 
+		ret = gpio_request(ext_spk_boost_gpio, "ext_spk_boost_gpio");
+		if (ret) {
+			pr_err("%s: gpio_request failed for ext_spk_boost_gpio.\n",
+				__func__);
+			return -EINVAL;
+		}
+		gpio_direction_output(ext_spk_boost_gpio, 1);
+	}
+#endif
+#if defined(CONFIG_BOARD_HELEN)
+	ext_spk_pa_gpio = of_get_named_gpio(pdev->dev.of_node,
+				"qcom,msm-spk-pa", 0);
+	if (ext_spk_pa_gpio < 0) {
+		dev_dbg(&pdev->dev,
+			"%s: missing msm-spk-pa in dt node\n", __func__);
+	} else {
+		if (!gpio_is_valid(ext_spk_pa_gpio)) {
+			pr_err("%s: Invalid external speaker pa gpio: %d",
+				__func__, ext_spk_pa_gpio);
+			return -EINVAL;
+		}
+		gpio_free(ext_spk_pa_gpio);
+
+		ret = gpio_request(ext_spk_pa_gpio, "ext_spk_pa");
+		if (ret) {
+			pr_err("%s: gpio_request failed for ext_spk_pa_gpio.\n",
+				__func__);
+			return -EINVAL;
+		}
+		gpio_direction_output(ext_spk_pa_gpio, 0);
+	}
+
+	ext_spk_hs_switch_gpio = of_get_named_gpio(pdev->dev.of_node,
+				"qcom,msm-spk-hs-switch", 0);
+	if (ext_spk_hs_switch_gpio < 0) {
+		dev_dbg(&pdev->dev,
+			"%s: missing msm-spk-hs-switch in dt node\n", __func__);
+	} else {
+		if (!gpio_is_valid(ext_spk_hs_switch_gpio)) {
+			pr_err("%s: Invalid spk hs switch gpio: %d",
+				__func__, ext_spk_hs_switch_gpio);
+			return -EINVAL;
+		}
+		gpio_free(ext_spk_hs_switch_gpio);
+
+		ret = gpio_request(ext_spk_hs_switch_gpio, "ext_spk_hs_switch_gpio");
+		if (ret) {
+			pr_err("%s: gpio_request failed for ext_spk_hs_switch_gpio.\n",
+				__func__);
+			return -EINVAL;
+		}
+		gpio_direction_output(ext_spk_hs_switch_gpio, 0);
+	}
+#endif
+#if defined(CONFIG_BOARD_SAPPHIRE)
+	ext_spk_eap_switch_gpio = of_get_named_gpio(pdev->dev.of_node,
+				"qcom,msm-spk-earpiece-switch", 0);
+	if (ext_spk_eap_switch_gpio < 0) {
+		dev_dbg(&pdev->dev,
+			"%s: missing msm-spk-earpiece-switch in dt node\n", __func__);
+	} else {
+		if (!gpio_is_valid(ext_spk_eap_switch_gpio)) {
+			pr_err("%s: Invalid spk earpiece switch gpio: %d",
+				__func__, ext_spk_eap_switch_gpio);
+			return -EINVAL;
+		}
+		gpio_free(ext_spk_eap_switch_gpio);
+
+		ret = gpio_request(ext_spk_eap_switch_gpio, "ext_spk_earpiece_switch_gpio");
+		if (ret) {
+			pr_err("%s: gpio_request failed for ext_spk_earpiece_switch_gpio.\n",
+				__func__);
+			return -EINVAL;
+		}
+		gpio_direction_output(ext_spk_eap_switch_gpio, 0);
+	}
+#endif
 	ret = of_property_read_string(pdev->dev.of_node, codec_type, &ptr);
 	if (ret) {
 		dev_err(&pdev->dev,
@@ -3352,6 +3591,11 @@ static int msm8x16_asoc_machine_probe(struct platform_device *pdev)
 		goto err;
 	}
 
+#if defined(CONFIG_BOARD_GEMI) || defined(CONFIG_BOARD_KELLY) || defined(CONFIG_BOARD_LEWIS) ||\
+	defined(CONFIG_BOARD_SAPPHIRE) || defined(CONFIG_BOARD_GRAYJOYLITE) || defined(CONFIG_BOARD_CALBEE)
+	gpio_direction_output(ext_spk_boost_gpio, 0);
+#endif
+
 	return 0;
 err:
 	if (pdata->vaddr_gpio_mux_spkr_ctl)
@@ -3376,6 +3620,21 @@ static int msm8x16_asoc_machine_remove(struct platform_device *pdev)
 		iounmap(pdata->vaddr_gpio_mux_mic_ctl);
 	if (pdata->vaddr_gpio_mux_pcm_ctl)
 		iounmap(pdata->vaddr_gpio_mux_pcm_ctl);
+#if defined(CONFIG_BOARD_GEMI) || defined(CONFIG_BOARD_KELLY) || defined(CONFIG_BOARD_LEWIS) ||\
+	defined(CONFIG_BOARD_SAPPHIRE) || defined(CONFIG_BOARD_GRAYJOYLITE) || defined(CONFIG_BOARD_CALBEE)
+	if (gpio_is_valid(ext_spk_boost_gpio))
+		gpio_free(ext_spk_boost_gpio);
+#endif
+#if defined(CONFIG_BOARD_HELEN)
+	if (gpio_is_valid(ext_spk_pa_gpio))
+		gpio_free(ext_spk_pa_gpio);
+	if (gpio_is_valid(ext_spk_hs_switch_gpio))
+		gpio_free(ext_spk_hs_switch_gpio);
+#endif
+#if defined(CONFIG_BOARD_SAPPHIRE)
+	if (gpio_is_valid(ext_spk_eap_switch_gpio))
+		gpio_free(ext_spk_eap_switch_gpio);
+#endif
 	snd_soc_unregister_card(card);
 	mutex_destroy(&pdata->cdc_mclk_mutex);
 	return 0;

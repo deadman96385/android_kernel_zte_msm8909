@@ -196,6 +196,13 @@ struct csi_lane_params_t {
 
 struct msm_sensor_info_t {
 	char     sensor_name[MAX_SENSOR_NAME];
+/*
+  * camera sensor module compatile
+  *
+  * by ZTE_YCM_20140728 yi.changming 000028
+  */
+	char     chromtix_lib_name[MAX_SENSOR_NAME];
+	char     default_chromtix_lib_name[MAX_SENSOR_NAME];
 	uint32_t session_id;
 	int32_t  subdev_id[SUB_MODULE_MAX];
 	int32_t  subdev_intf[SUB_MODULE_MAX];
@@ -271,6 +278,9 @@ struct eeprom_get_cmm_t {
 struct msm_eeprom_cfg_data {
 	enum eeprom_cfg_type_t cfgtype;
 	uint8_t is_supported;
+	char sensor_module_name[MAX_SENSOR_NAME];
+	char chromtix_lib_name[MAX_SENSOR_NAME];
+	char default_chromtix_lib_name[MAX_SENSOR_NAME];
 	union {
 		char eeprom_name[MAX_EEPROM_NAME];
 		struct eeprom_get_t get_data;
@@ -532,6 +542,12 @@ struct msm_actuator_set_position_t {
 	uint16_t delay[MAX_NUMBER_OF_STEPS];
 };
 
+/*add power down setting for actuator ZTE_CAM_LIJING_20170427*/
+struct msm_actuator_pwdn_settings_t {
+	uint16_t pwdn_setting_size;
+	struct reg_settings_t *pwdn_reg_settings;
+};
+
 struct msm_actuator_cfg_data {
 	int cfgtype;
 	uint8_t is_af_supported;
@@ -541,6 +557,8 @@ struct msm_actuator_cfg_data {
 		struct msm_actuator_get_info_t get_info;
 		struct msm_actuator_set_position_t setpos;
 		enum af_camera_name cam_name;
+		/*add power down setting for actuator ZTE_CAM_LIJING_20170427*/
+		struct msm_actuator_pwdn_settings_t pwdn_setting;
 	} cfg;
 };
 

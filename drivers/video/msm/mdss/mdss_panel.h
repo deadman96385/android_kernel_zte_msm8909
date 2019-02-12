@@ -395,6 +395,7 @@ struct mdss_panel_info {
 	bool ulps_suspend_enabled;
 	bool panel_ack_disabled;
 	bool esd_check_enabled;
+	bool esd_check_enabled_second;
 	char dfps_update;
 	int new_fps;
 	int panel_max_fps;

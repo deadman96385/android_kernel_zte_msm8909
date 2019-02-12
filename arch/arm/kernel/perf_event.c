@@ -602,7 +602,10 @@ static void armpmu_init(struct arm_pmu *armpmu)
 	armpmu->pmu.start = armpmu_start;
 	armpmu->pmu.stop = armpmu_stop;
 	armpmu->pmu.read = armpmu_read;
-	armpmu->pmu.events_across_hotplug = 1;
+
+	/* merges qualcomm patch, change the init value from 1 to 0. */
+	armpmu->pmu.events_across_hotplug = 0;
+	pr_info("armpmu init, change init value as 0 \n");
 }
 
 int armpmu_register(struct arm_pmu *armpmu, int type)

@@ -110,7 +110,7 @@ enum msm_usb_phy_type {
 
 #define IDEV_ACA_CHG_MAX	1500
 #define IDEV_ACA_CHG_LIMIT	500
-#define IDEV_HVDCP_CHG_MAX	1800
+#define IDEV_HVDCP_CHG_MAX	1500
 
 /**
  * Different states involved in USB charger detection.
@@ -481,6 +481,9 @@ struct msm_otg {
 	struct workqueue_struct *otg_wq;
 	struct delayed_work chg_work;
 	struct delayed_work id_status_work;
+	/* wall charger in which D+/D- disconnected would be recognized as usb cable, 1/7 */
+	struct delayed_work invalid_chg_work;
+	/* end. */
 	struct delayed_work suspend_work;
 	enum usb_chg_state chg_state;
 	enum usb_chg_type chg_type;
@@ -579,6 +582,9 @@ struct msm_otg {
 	rwlock_t dbg_lock;
 	char (buf[DEBUG_MAX_MSG])[DEBUG_MSG_LEN];   /* buffer */
 	enum usb_id_state id_state;
+	/* Usb online lpm test requirement, 1/5 */
+	struct class *lpm_test_class;
+	struct device *lpm_test_dev;
 };
 
 struct ci13xxx_platform_data {

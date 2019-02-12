@@ -2036,6 +2036,17 @@ process:
 		{
 			if (!tcp_prequeue(sk, skb))
 				ret = tcp_v4_do_rcv(sk, skb);
+/*ZTE_LC_TCP_DEBUG, 20170417 improved */
+			if (tcp_socket_debugfs & 0x00000001) {
+
+				pr_info("[IP] TCP RCV len = %hu, "
+					"Gpid:%d (%s) [%d (%s)] (%pI4:%hu <- %pI4:%hu)\n",
+					ntohs(iph->tot_len),
+					current->group_leader->pid, current->group_leader->comm,
+					current->pid, current->comm,
+					&iph->daddr, ntohs(th->dest),
+					&iph->saddr, ntohs(th->source));
+			}
 		}
 	} else if (unlikely(sk_add_backlog(sk, skb,
 					   sk->sk_rcvbuf + sk->sk_sndbuf))) {

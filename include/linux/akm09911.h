@@ -41,6 +41,7 @@
 #define AK09911_REGS_SIZE		13
 #define AK09911_WIA1_VALUE		0x48
 #define AK09911_WIA2_VALUE		0x05
+#define AK09916_WIA2_VALUE		0x09
 
 /*** Limit of factory shipment test *******************************************/
 #define TLIMIT_TN_REVISION_09911				""

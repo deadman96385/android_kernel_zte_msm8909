@@ -126,7 +126,6 @@ static int pwm_device_request(struct pwm_device *pwm, const char *label)
 		}
 	}
 
-	set_bit(PWMF_REQUESTED, &pwm->flags);
 	pwm->label = label;
 
 	return 0;

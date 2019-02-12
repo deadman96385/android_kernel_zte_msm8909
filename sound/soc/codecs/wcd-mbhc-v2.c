@@ -31,6 +31,15 @@
 #include "wcd-mbhc-v2.h"
 #include "wcdcal-hwdep.h"
 
+
+/*
+ * headset detect /proc/hs
+ */
+#include <linux/time.h>
+#include <asm/uaccess.h>
+#include <linux/proc_fs.h>
+
+static int hs_type;
 #define WCD_MBHC_JACK_MASK (SND_JACK_HEADSET | SND_JACK_OC_HPHL | \
 			   SND_JACK_OC_HPHR | SND_JACK_LINEOUT | \
 			   SND_JACK_UNSUPPORTED | SND_JACK_MECHANICAL)
@@ -39,7 +48,7 @@
 				  SND_JACK_BTN_4 | SND_JACK_BTN_5 | \
 				  SND_JACK_BTN_6 | SND_JACK_BTN_7)
 #define OCP_ATTEMPT 1
-#define HS_DETECT_PLUG_TIME_MS (3 * 1000)
+#define HS_DETECT_PLUG_TIME_MS (1 * 1000)
 #define SPECIAL_HS_DETECT_TIME_MS (2 * 1000)
 #define MBHC_BUTTON_PRESS_THRESHOLD_MIN 250
 #define GND_MIC_SWAP_THRESHOLD 4
@@ -651,8 +660,6 @@ static void wcd_mbhc_report_plug(struct wcd_mbhc *mbhc, int insertion,
 				(mbhc->zr > mbhc->mbhc_cfg->linein_th &&
 				 mbhc->zr < MAX_IMPED) &&
 				(jack_type == SND_JACK_HEADPHONE)) {
-				jack_type = SND_JACK_LINEOUT;
-				mbhc->current_plug = MBHC_PLUG_TYPE_HIGH_HPH;
 				if (mbhc->hph_status) {
 					mbhc->hph_status &= ~(SND_JACK_HEADSET |
 							SND_JACK_LINEOUT |
@@ -676,6 +683,7 @@ static void wcd_mbhc_report_plug(struct wcd_mbhc *mbhc, int insertion,
 				    WCD_MBHC_JACK_MASK);
 		wcd_mbhc_clr_and_turnon_hph_padac(mbhc);
 	}
+	hs_type = mbhc->current_plug;
 	pr_debug("%s: leave hph_status %x\n", __func__, mbhc->hph_status);
 }
 
@@ -704,7 +712,7 @@ static void wcd_mbhc_find_plug_and_report(struct wcd_mbhc *mbhc,
 						SND_JACK_HEADPHONE);
 			if (mbhc->current_plug == MBHC_PLUG_TYPE_HEADSET)
 				wcd_mbhc_report_plug(mbhc, 0, SND_JACK_HEADSET);
-		wcd_mbhc_report_plug(mbhc, 1, SND_JACK_UNSUPPORTED);
+		wcd_mbhc_report_plug(mbhc, 1, SND_JACK_HEADPHONE);
 	} else if (plug_type == MBHC_PLUG_TYPE_HEADSET) {
 		/*
 		 * If Headphone was reported previously, this will
@@ -790,7 +798,7 @@ static int wcd_check_cross_conn(struct wcd_mbhc *mbhc)
 	WCD_MBHC_REG_UPDATE_BITS(WCD_MBHC_ELECT_SCHMT_ISRC, reg1);
 	pr_debug("%s: leave, plug type: %d\n", __func__,  plug_type);
 
-	return (plug_type == MBHC_PLUG_TYPE_GND_MIC_SWAP) ? true : false;
+	return false;
 }
 
 static bool wcd_is_special_headset(struct wcd_mbhc *mbhc)
@@ -1849,6 +1857,27 @@ static void wcd_mbhc_moisture_config(struct wcd_mbhc *mbhc)
 		mbhc->mbhc_cb->hph_pull_up_control(mbhc->codec,
 				mbhc->mbhc_cfg->moist_cfg.m_iref_ctl);
 }
+
+/*
+ * headset detect /proc/hs
+ */
+static ssize_t hs_read(struct file *file, char __user *buf, size_t count, loff_t *pos)
+{
+	int ret = 0;
+	char buffer[32] = {0};
+
+	ret = scnprintf(buffer, 32, "%d\n", hs_type);
+
+	ret = simple_read_from_buffer(buf, count, pos, buffer, ret);
+
+	return ret;
+}
+
+static const struct file_operations hs_detect_ops = {
+	.owner    = THIS_MODULE,
+	.read     = hs_read,
+};
+
 static int wcd_mbhc_initialise(struct wcd_mbhc *mbhc)
 {
 	int ret = 0;
@@ -2111,6 +2140,7 @@ int wcd_mbhc_init(struct wcd_mbhc *mbhc, struct snd_soc_codec *codec,
 	int hph_swh = 0;
 	int gnd_swh = 0;
 	struct snd_soc_card *card = codec->card;
+	struct proc_dir_entry *proc_hs_type = NULL;
 	const char *hph_switch = "qcom,msm-mbhc-hphl-swh";
 	const char *gnd_switch = "qcom,msm-mbhc-gnd-swh";
 
@@ -2287,6 +2317,11 @@ int wcd_mbhc_init(struct wcd_mbhc *mbhc, struct snd_soc_codec *codec,
 		       mbhc->intr_ids->hph_right_ocp);
 		goto err_hphr_ocp_irq;
 	}
+	proc_hs_type = proc_create("hs", S_IRUGO, NULL, &hs_detect_ops);
+	if (!proc_hs_type)
+		pr_err("%s: hs register failed\n", __func__);
+	else
+		pr_info("%s: hs register success\n", __func__);
 
 	pr_debug("%s: leave ret %d\n", __func__, ret);
 	return ret;
@@ -2330,6 +2365,7 @@ void wcd_mbhc_deinit(struct wcd_mbhc *mbhc)
 	mbhc->mbhc_cb->free_irq(codec, mbhc->intr_ids->hph_right_ocp, mbhc);
 	if (mbhc->mbhc_cb && mbhc->mbhc_cb->register_notifier)
 		mbhc->mbhc_cb->register_notifier(codec, &mbhc->nblock, false);
+	remove_proc_entry("hs", NULL);
 	mutex_destroy(&mbhc->codec_resource_lock);
 }
 EXPORT_SYMBOL(wcd_mbhc_deinit);
