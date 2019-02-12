@@ -1,0 +1,137 @@
+//for touchscreen and key and keypad-backlight
+
+&soc {
+	i2c@78b9000 { /* BLSP1 QUP5 */
+		synaptics@22 {
+			compatible = "synaptics,syna-ts";
+			reg = <0x20>;
+			interrupt-parent = <&msm_gpio>;
+			interrupts = <13 0x2>;
+			vdd-supply = <&pm8916_l17>;
+			vcc_i2c-supply = <&pm8916_l6>;
+			/* pins used by touchscreen */
+			pinctrl-names = "pmx_ts_active","pmx_ts_suspend";
+			pinctrl-0 = <&ts_int_active &ts_reset_active>;
+			pinctrl-1 = <&ts_int_suspend &ts_reset_suspend>;
+			//synaptics,display-coords = <0 0 1079 1919>;
+			//synaptics,panel-coords = <0 0 1079 2084>;
+			synaptics,irq-gpio = <&msm_gpio 13 0x0>;
+			synaptics,reset-gpio = <&msm_gpio 12 0x0>;
+			synaptics,max_y = <0>;
+			synaptics,i2c-pull-up;
+			synaptics,power-down;
+			synaptics,disable-gpios;
+		};
+		goodix_ts@14 {
+				compatible = "goodix,gt1x";
+				reg = <0x14>;
+				interrupt-parent = <&msm_gpio>;
+				interrupts = <13 0x2008>;
+				vdd_ana-supply = <&pm8916_l17>;
+				vcc_i2c-supply = <&pm8916_l6>;
+				goodix,rst-gpio = <&msm_gpio 12 0x00>;
+				goodix,irq-gpio = <&msm_gpio 13 0x00>;
+		};
+		focaltech@38 {
+			compatible = "focaltech,fts";
+			reg = <0x38>;
+			interrupt-parent = <&msm_gpio>;
+			interrupts = <13 0x8>;
+			vdd-supply = <&pm8916_l17>;
+			pinctrl-names = "pmx_ts_active","pmx_ts_suspend";
+			pinctrl-0 = <&ts_int_active &ts_reset_active>;
+			pinctrl-1 = <&ts_int_suspend &ts_reset_suspend>;
+			vcc_i2c-supply = <&pm8916_l6>;
+			focaltech,name = "Fts-touchscreen";
+			focaltech,family-id = <0x54>;
+			focaltech,reset-gpio = <&msm_gpio 12 0x00>;
+			focaltech,irq-gpio =<&msm_gpio 13 0x00>;
+			focaltech,display-coords = <0 0 480 854>;
+			//focaltech,panel-coords = <0 0 1080 2000>;
+			focaltech,button-map= <158 102 187>;
+			focaltech,no-force-update;
+			focaltech,i2c-pull-up;
+			focaltech,group-id = <1>;
+			focaltech,hard-reset-delay-ms = <20>;
+			focaltech,soft-reset-delay-ms = <150>;
+			focaltech,num-max-touches = <10>;
+			focaltech,fw-name = "FT_Upgrade_App.i";
+			focaltech,fw-delay-aa-ms = <50>;
+			focaltech,fw-delay-55-ms = <30>;
+			focaltech,fw-upgrade-id1 = <0x79>;
+			focaltech,fw-upgrade-id2 = <0x03>;
+			focaltech,fw-delay-readid-ms = <10>;
+			focaltech,fw-delay-era-flsh-ms = <2000>;
+		};
+	};
+
+	gen-vkeys {
+		compatible = "zte,gen-vkeys";
+		label = "syna-touchscreen";
+		zte,disp-maxy_px = <854>;
+		zte,disp-maxy_mm = <1109>; //0.1mm
+		zte,disp-maxx_mm = <625>; //0.1mm
+		zte,x1=<110>;
+		zte,x2=<310>;
+		zte,x3=<510>;
+		zte,lcd_offset=<25>;
+		zte,y_max_offset=<150>;
+		zte,dx=<100>;
+		zte,key-codes = <158 102 187>;
+	};
+	gen-vkeys1 {
+		compatible = "zte,gen-vkeys";
+		label = "goodix-touchscreen";
+		zte,disp-maxy_px = <854>;
+		zte,disp-maxy_mm = <1100>;//0.1mm
+		zte,disp-maxx_mm = <625>;//0.1mm
+		zte,x1=<110>;
+		zte,x2=<310>;
+		zte,x3=<510>;
+		zte,lcd_offset=<25>;
+		zte,y_max_offset=<150>;
+		zte,dx=<100>;
+		zte,key-codes = <158 102 187>;
+	};
+	gen-vkeys2 {
+		compatible = "zte,gen-vkeys";
+		label = "Fts-touchscreen";
+		zte,disp-maxy_px = <854>;
+		zte,disp-maxy_mm = <1100>;//0.1mm
+		zte,disp-maxx_mm = <625>;//0.1mm
+		zte,x1=<140>;
+		zte,x2=<310>;
+		zte,x3=<480>;
+		zte,lcd_offset=<25>;
+		zte,y_max_offset=<150>;
+		zte,dx=<100>;
+		zte,key-codes = <158 102 187>;
+	};
+	gpio_keys {
+		compatible = "gpio-keys";
+		input-name = "gpio-keys";
+		pinctrl-names = "tlmm_gpio_key_active","tlmm_gpio_key_suspend";
+		pinctrl-0 = <&gpio_key_active>;
+		pinctrl-1 = <&gpio_key_suspend>;
+
+		vol_down {
+			label = "volume_down";
+			gpios = <&msm_gpio 91 0x1>;
+			linux,input-type = <1>;
+			linux,code = <114>;
+			gpio-key,wakeup;
+			debounce-interval = <15>;
+		};
+		vol_up {
+			label = "volume_up";
+			gpios = <&msm_gpio 90 0x1>;
+			linux,input-type = <1>;
+			linux,code = <115>;
+			gpio-key,wakeup;
+			debounce-interval = <15>;
+		};
+	};
+};
+
+
+

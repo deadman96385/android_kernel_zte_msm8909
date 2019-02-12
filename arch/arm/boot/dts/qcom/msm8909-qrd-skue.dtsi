@@ -11,7 +11,7 @@
  */
 
 #include "msm8909-qrd.dtsi"
-#include "msm8909-camera-sensor-skue.dtsi"
+//#include "msm8909-camera-sensor-skue.dtsi"
 
 / {
 	model = "Qualcomm Technologies, Inc. MSM8909 QRD SKUE";
@@ -55,7 +55,7 @@
 		};
 	};
 
-	hall_int_pin {
+/*	hall_int_pin {
 		qcom,pins = <&gp 36>;
 		qcom,pin-func = <0>;
 		qcom,num-grp-pins = <1>;
@@ -64,7 +64,7 @@
 			drive-strength = <6>;
 			bias-pull-up;
 		};
-	};
+	}; */
 };
 
 &soc {
@@ -159,7 +159,7 @@
 	};
 
 	i2c@78b5000 { /* BLSP1 QUP1 */
-		liteon@23 {
+		/*liteon@23 {
 			compatible = "liteon,ltr553";
 			reg = <0x23>;
 			vdd-supply = <&pm8909_l17>;
@@ -176,7 +176,7 @@
 			liteon,wakeup-threshold = <4>;
 			liteon,als-integration-time = <0>;
 			liteon,ps-distance-table = <1376 566 343 287 200 170 155>;
-		};
+		};*/
 
 		bosch@18 { /* Accelerometer sensor */
 			compatible = "bosch,bma2x2";
@@ -194,7 +194,7 @@
 		};
 	};
 
-	hall {
+/*	hall {
 		compatible = "hall-switch";
 		pinctrl-names = "default";
 		pinctrl-0 = <&hall_sensor_int_default>;
@@ -205,7 +205,7 @@
 		linux,wakeup;
 		linux,min-uv = <1650000>;
 		linux,max-uv = <3300000>;
-	};
+	}; */
 
 	sound {
 		compatible = "qcom,msm8x16-audio-codec";
@@ -217,6 +217,10 @@
 		qcom,msm-mbhc-hphl-swh = <1>;
 		qcom,msm-mbhc-gnd-swh = <0>;
 		qcom,msm-hs-micbias-type = "internal";
+		qcom,msm-spk-ext-boost = <&msm_gpio 36 0>;
+		qcom,msm-spk-pa = <&msm_gpio 10 0>;
+		qcom,msm-spk-hs-switch = <&msm_gpio 11 0>;
+		qcom,msm-spk-earpiece-switch = <&msm_gpio 0 0>;
 		qcom,msm-micbias1-ext-cap;
 		qcom,msm-micbias2-ext-cap;
 		qcom,audio-routing =
@@ -226,7 +230,8 @@
 			"MIC BIAS Internal1", "Handset Mic",
 			"MIC BIAS Internal2", "Headset Mic",
 			"AMIC1", "MIC BIAS Internal1",
-			"AMIC2", "MIC BIAS Internal2";
+			"AMIC2", "MIC BIAS Internal2",
+			"AMIC3", "MIC BIAS Internal1";
 		pinctrl-names = "cdc_lines_act",
 				"cdc_lines_sus";
 		pinctrl-0 = <&cdc_pdm_lines_act>;
@@ -289,23 +294,23 @@
 };
 
 &sdc2_cd_on {
-        /delete-property/ bias-pull-up;
-        bias-pull-down;
+	/delete-property/ bias-pull-up;
+	bias-pull-down;
 };
 
 &sdc2_cd_off {
-        /delete-property/ bias-disable;
-        bias-pull-down;
+	/delete-property/ bias-disable;
+	bias-pull-down;
 };
 
 &sdhc_2 {
-        qcom,nonremovable;
+	/* qcom,nonremovable; */
 
-        interrupts = <0 1>;
-        interrupt-map = <0 &intc 0 125 0
-                1 &intc 0 221 0>;
-        interrupt-names = "hc_irq", "pwr_irq";
-        /delete-property/ cd-gpios;
+	interrupts = <0 1>;
+	interrupt-map = <0 &intc 0 125 0
+			1 &intc 0 221 0>;
+	interrupt-names = "hc_irq", "pwr_irq";
+	/delete-property/ cd-gpios;
 };
 
 &pm8909_mpps {
@@ -320,7 +325,7 @@
 		qcom,invert = <0>;		/* Disable invert */
 		qcom,src-sel = <4>;		/* DTEST1 */
 		qcom,vin-sel = <0>;		/* VPH_PWR */
-		qcom,master-en = <1>;		/* Enable MPP */
+		qcom,master-en = <0>;		/* Disable MPP */
 	};
 
 	mpp@a200 { /* MPP 3 */
@@ -365,13 +370,13 @@
 
 &pm8909_vadc {
 	chan@30 {
-		qcom,scale-function = <13>;
+		qcom,scale-function = <1>;
 	};
 };
 
 &pm8909_adc_tm {
 	chan@30 {
-		qcom,scale-function = <7>;
+		qcom,scale-function = <1>;
 	};
 };
 
@@ -386,19 +391,4 @@
 	status = "okay";
 };
 
-/ {
-	qrd_batterydata: qcom,battery-data {
-		qcom,rpull-up-kohm = <0>;
-		qcom,vref-batt-therm = <1800000>;
 
-		#include "batterydata-qrd-skue-4v35-2000mah.dtsi"
-	};
-};
-
-&pm8909_bms {
-	status = "okay";
-	qcom,resume-soc = <95>;
-	qcom,use-reported-soc;
-	qcom,force-bms-active-on-charger;
-	qcom,battery-data = <&qrd_batterydata>;
-};

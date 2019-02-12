@@ -11,13 +11,14 @@
  */
 
 #include "msm8909-pm8916-qrd.dtsi"
-#include "msm8909-camera-sensor-skut.dtsi"
+//#include "msm8909-camera-sensor-skut.dtsi"
 / {
 	model = "Qualcomm Technologies, Inc. MSM8909-PM8916 QRD SKUT";
 	compatible = "qcom,msm8909-qrd", "qcom,msm8909", "qcom,qrd";
 };
 
 &tlmm_pinmux {
+/*
 	akm_reset_pin {
 		qcom,pins = <&gp 36>;
 		qcom,pin-func = <0>;
@@ -75,44 +76,10 @@
 			bias-pull-down;
 		};
 	};
+*/
 };
 
 &soc {
-	i2c@78b9000 { /* BLSP1 QUP5 */
-		synaptics@20 {
-			compatible = "synaptics,rmi4";
-			reg = <0x22>;
-			interrupt-parent = <&msm_gpio>;
-			interrupts = <13 0x2008>;
-			vdd-supply = <&pm8916_l17>;
-			vcc_i2c-supply = <&pm8916_l6>;
-			/* pins used by touchscreen */
-			pinctrl-names = "pmx_ts_active","pmx_ts_suspend","pmx_ts_release";
-			pinctrl-0 = <&ts_int_active &ts_reset_active>;
-			pinctrl-1 = <&ts_int_suspend &ts_reset_suspend>;
-			pinctrl-2 = <&ts_release>;
-			synaptics,display-coords = <0 0 720 1280>;
-			synaptics,panel-coords = <0 0 720 1480>;
-			synaptics,irq-gpio = <&msm_gpio 13 0x2008>;
-			synaptics,reset-gpio = <&msm_gpio 12 0x0>;
-			synaptics,i2c-pull-up;
-			synaptics,power-down;
-			synaptics,disable-gpios;
-			synaptics,button-map = <139 172 158>;
-		};
-	};
-
-	gen-vkeys {
-		compatible = "qcom,gen-vkeys";
-		label = "ft5x06_ts";
-		qcom,disp-maxx = <480>;
-		qcom,disp-maxy = <854>;
-		qcom,panel-maxx = <480>;
-		qcom,panel-maxy = <946>;
-		qcom,key-codes = <139 172 158>;
-		qcom,y-offset = <0>;
-	};
-
 	sound {
 		compatible = "qcom,msm8x16-audio-codec";
 		qcom,model = "msm8909-skut-snd-card";
@@ -181,8 +148,8 @@
 			linux,default-trigger = "none";
 		};
 	};
-
-	i2c@78b5000 { /* BLSP1 QUP1 */
+/*
+	i2c@78b5000 { // BLSP1 QUP1
 		liteon@23 {
 			compatible = "liteon,ltr553";
 			reg = <0x23>;
@@ -204,7 +171,7 @@
 		};
 
 		bosch@18 { /* Accelerometer sensor */
-			compatible = "bosch,bma2x2";
+/*			compatible = "bosch,bma2x2";
 			reg = <0x18>;
 			pinctrl-names = "default";
 			pinctrl-0 = <&bma2x2_int1_default &bma2x2_int2_default>;
@@ -234,39 +201,54 @@
 			akm,use-hrtimer;
 		};
 	};
+*/
 };
 
 &spmi_bus {
 	qcom,pm8916@0 {
 		qcom,leds@a100 {
 			status = "okay";
-			qcom,led_mpp_2 {
+			qcom,led_mpp_2 {	/* red led */
 				label = "mpp";
 				linux,name = "red";
-				linux,default-trigger = "none";
+				linux,default-trigger = "battery-charging";
 				qcom,default-state = "off";
 				qcom,max-current = <40>;
 				qcom,current-setting = <5>;
 				qcom,id = <6>;
-				qcom,mode = "manual";
-				qcom,source-sel = <1>;
+				qcom,source-sel = <8>;
 				qcom,mode-ctrl = <0x60>;
+				qcom,pwm-channel = <0>;
+				qcom,pwm-us = <1000>;
+				qcom,vin-ctrl = <0x00>;
+				qcom,duty-pcts = <50>;
+				qcom,mode = "pwm";
+				qcom,use-blink;
+				pwms = <&pm8916_pwm 0 0>;
+				qcom,pwm-names = "red-led";
 			};
 		};
 
 		qcom,leds@a300 {
 			status = "okay";
-			qcom,led_mpp_4 {
+			qcom,led_mpp_4 {	/* green led */
 				label = "mpp";
-				linux,name = "green";
-				linux,default-trigger = "none";
+				linux,name = "green";		/* orgin is wled-backlight */
+				linux,default-trigger = "battery-full";	/* org="bkl-trigger"; */
 				qcom,default-state = "off";
 				qcom,max-current = <40>;
-				qcom,current-setting = <5>;
-				qcom,id = <6>;
-				qcom,mode = "manual";
-				qcom,source-sel = <1>;
-				qcom,mode-ctrl = <0x60>;
+				qcom,current-setting = <5>;	/* zte add */
+				qcom,id = <6>;				/* in leds-qpnp.c enum QPNP_ID_LED_MPP(6) */
+				qcom,source-sel = <8>;		/* select power source, default 1 (enabled)(org=8) */
+				qcom,mode-ctrl = <0x60>;	/* operation mode, default 0x60 = Mode Sink (org=0x10)*/
+				qcom,pwm-channel = <0>;
+				qcom,pwm-us = <1000>;
+				qcom,vin-ctrl = <0x00>;		/* select input source, 0 to 3 */
+				qcom,duty-pcts = <50>;
+				qcom,mode = "pwm";
+				qcom,use-blink;
+				pwms = <&pm8916_pwm 0 0>;
+				qcom,pwm-names = "green-led";
 			};
 		};
 	};
@@ -278,15 +260,12 @@
 	};
 };
 
-#include "dsi-panel-fl10802-fwvga-video.dtsi"
 
 &mdss_mdp {
 	qcom,mdss-pref-prim-intf = "dsi";
 };
 
-&dsi_fl10802_fwvga_video {
-	qcom,cont-splash-enabled;
-};
+
 
 &pmx_mdss {
 	qcom,num-grp-pins = <1>;
@@ -298,11 +277,3 @@
 	qcom,pins = <&gp 24>;
 };
 
-&mdss_dsi0 {
-	qcom,dsi-pref-prim-pan = <&dsi_fl10802_fwvga_video>;
-	pinctrl-names = "mdss_default", "mdss_sleep";
-	pinctrl-0 = <&mdss_dsi_active &mdss_te_active>;
-	pinctrl-1 = <&mdss_dsi_suspend &mdss_te_suspend>;
-
-	qcom,platform-reset-gpio = <&msm_gpio 25 0>;
-};

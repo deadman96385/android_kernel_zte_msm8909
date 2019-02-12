@@ -38,7 +38,7 @@
 			label = "cam-sensor-mclk0";
 			 /* active state */
 			cam_sensor_mclk0_default: default {
-				drive-strength = <2>; /* 2 MA */
+				drive-strength = <4>; /* 4 MA */
 				bias-disable = <0>; /* No PULL */
 			};
 		};
@@ -50,7 +50,7 @@
 			label = "cam-sensor-mclk0-sleep";
 			/* suspend state */
 			cam_sensor_mclk0_sleep: sleep {
-				drive-strength = <2>; /* 2 MA */
+				drive-strength = <4>; /* 4 MA */
 				bias-pull-down; /* PULL DOWN */
 			};
 		};
@@ -63,7 +63,7 @@
 			label = "cam-sensor-mclk1";
 			/* active state */
 			cam_sensor_mclk1_default: default {
-				drive-strength = <2>; /* 2 MA */
+				drive-strength = <4>; /* 4 MA */
 				bias-disable = <0>; /* No PULL */
 			};
 		};
@@ -75,7 +75,7 @@
 			label = "cam-sensor-mclk1-sleep";
 			/* suspend state */
 			cam_sensor_mclk1_sleep: sleep {
-				drive-strength = <2>; /* 2 MA */
+				drive-strength = <4>; /* 4 MA */
 				bias-pull-down; /* PULL DOWN */
 			};
 		};
@@ -1015,10 +1015,21 @@
 			mdss_dsi_suspend: suspend {
 				drive-strength = <2>; /* 2 mA */
 				bias-pull-down; /* pull down */
-				output-low;
+				output-high;
 			};
 		};
+		zte_hall: zte_hall {
+			label = "hall_en";
+			qcom,pins = <&gp 97>;
+			qcom,pin-func = <0>;
+			qcom,num-grp-pins = <1>;
 
+			zte_hall_gpio_active: active {
+				drive-strength = <2>; /* 2 mA */
+				bias-disable = <0>; /* no pull */
+				input-enable; /* input */
+			};
+		};
 		pmx_mdss_te: pmx_mdss_te {
 			label = "mdss-te-pin";
 			qcom,pin-func = <1>;
@@ -1065,7 +1076,7 @@
 
                         i2c_5_sleep: i2c_5_sleep {
                                 drive-strength = <2>; /* 2 MA */
-                                bias-pull-down; /* PULL DOWN */
+								bias-disable = <0>; /* No PULL */
                         };
                 };
 
@@ -1083,7 +1094,7 @@
 
 			i2c_3_sleep: i2c_3_sleep {
 				drive-strength = <2>; /* 2 MA */
-				bias-pull-down; /* PULL DOWN */
+				bias-disable = <0>; /* No PULL */
 			};
 		};
 
@@ -1101,7 +1112,7 @@
 
 			i2c_1_sleep: i2c_1_sleep {
 				drive-strength = <2>; /* 2 MA */
-				bias-pull-down; /* PULL DOWN */
+				bias-disable = <0>; /* No PULL */
 			};
 		};
 
@@ -1303,7 +1314,7 @@
 		};
 
 		smb_int_pin {
-			qcom,pins = <&gp 58>;
+			qcom,pins = <&gp 110>;
 			qcom,num-grp-pins = <1>;
 			qcom,pin-func = <0>;
 			label = "smb1360_int_gpio";
@@ -1390,6 +1401,37 @@
 					 drive-strength = <2>;
 					 output-low;
 					 bias-disable;
+			};
+		};
+		lpsensor_int_pin {
+			qcom,pins = <&gp 94>;
+			qcom,pin-func = <0>;
+			qcom,num-grp-pins = <1>;
+			label = "lpsensor-irq";
+			lpsensor_default: lpsensor_default {
+				drive-strength = <6>;
+				bias-pull-up;
+			};
+			lpsensor_sleep: lpsensor_sleep {
+				drive-strength = <2>;
+				bias-disable;
+			};
+		};
+
+		sx9310_int_pin {
+			qcom,pins = <&gp 49>;
+			qcom,num-grp-pins = <1>;
+			qcom,pin-func = <0>;
+			label = "sx9310_int_pin";
+			sx9310_int_active: sx9310_int_active {
+				drive-strength = <2>;	/* 2 mA */
+				bias-disable; /* No PULL */
+				input-enable; /* input */
+			};
+			sx9310_int_sleep: sx9310_int_sleep {
+				drive-strength = <2>;	/* 2 mA */
+				bias-disable; /* No PULL */
+				input-enable; /* input */
 			};
 		};
 	};

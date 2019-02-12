@@ -40,14 +40,18 @@
 				qcom,pull-up = <1>;
 				qcom,s1-timer = <10256>;
 				qcom,s2-timer = <2000>;
-				qcom,s2-type = <1>;
+				qcom,s2-type = <7>;
 				linux,code = <116>;
 			};
 
 			qcom,pon_2 {
 				qcom,pon-type = <1>;
 				qcom,pull-up = <1>;
-				linux,code = <114>;
+				/*linux,code = <114>;*/
+				qcom,support-reset = <1>;
+				qcom,s1-timer = <32>;
+				qcom,s2-timer = <10>;
+				qcom,s2-type = <1>;
 			};
 		};
 
@@ -190,6 +194,12 @@
 			};
 		};
 
+		qcom,leds@a100 {
+			compatible = "qcom,leds-qpnp";
+			reg = <0xa100 0x100>;
+			label = "mpp";
+		};
+
 		qcom,leds@a300 {
 			compatible = "qcom,leds-qpnp";
 			reg = <0xa300 0x100>;
@@ -293,7 +303,9 @@
 			qcom,force-s3-on-suspend;
 			qcom,force-s2-in-charging;
 			qcom,report-charger-eoc;
+			qcom,use-reported-soc;
 			qcom,resume-soc = <99>;
+			qcom,force-bms-active-on-charger;
 
 			qcom,batt-pres-status@1208 {
 				reg = <0x1208 0x1>;
@@ -566,6 +578,52 @@
 			qcom,channel-id = <0>;
 			qcom,supported-sizes = <6>, <9>;
 			#pwm-cells = <2>;
+		};
+	};
+};
+&soc {
+	i2c@78b8000 {
+		ti2419x_chg:ti2419x-chg@6B {
+			compatible = "zte,ti2419x-chg";
+			reg = <0x6B>;
+			interrupt-parent = <&msm_gpio>;
+			interrupts = <110 2>;
+			pinctrl-names = "default";
+			pinctrl-0 = <&smb_int_default>;
+			regulator-name = "smb1360_otg_vreg";
+
+			zte,float-voltage-mv = <4350>;
+			zte,iterm-ma = <150>;
+			/*zte,hw-iterm-disabled;*/ /*this var can not open here,should be opend by project dts*/
+			/*zte,charging-disabled;*/ /*this var can not open here,should be opend by project dts*/
+			zte,recharge-thresh-mv = <100>;
+			zte,warm_recharge-thresh-mv = <50>;
+			zte,vbatdet-max-err-mv = <20>;
+			zte,charging-timeout = <12>;
+			zte,input_voltage_mv = <4520>;
+			zte,max_usb_current = <1500>;
+			zte,max_battery_current = <2100>;
+			zte,thermal-mitigation = <1500 1000 900 500 0>;
+			zte,warm_bat_mv = <4000>;
+			zte,cool_bat_mv = <4000>;
+			zte,warm-bat-decidegc = <440>;
+			zte,cool-bat-decidegc = <100>;
+			zte,hot-bat-decidegc = <500>;
+			zte,cold-bat-decidegc = <20>;
+			zte,warm_bat_chg_ma = <512>;
+			zte,cool_bat_chg_ma = <512>;
+			qcom,tichg-vadc = <&pm8909_vadc>;
+			qcom,tichg-adc_tm = <&pm8909_adc_tm>;
+			zte,batt-hot-percentage = <25>; /*for battery therm correcting*/
+			zte,batt-cold-percentage= <80>; /*for battery therm correcting*/
+		};
+		lc709203f_fg2:lc709203f_fg2@0B {
+			compatible = "zte,lc709203f_fg";
+			reg = <0x0B>;
+			zte,bat_full_charge_capacity = <2540>; /*depend on the battery cell used*/
+			zte,lc709203f_ite_threshold_high = <990>;
+			zte,lc709203f_ite_threshold_low  = <15>;
+			zte,lc709203f_pack_appli_value   = <61>;/*depend on the PCB,20mohm*/
 		};
 	};
 };

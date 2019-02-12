@@ -54,6 +54,22 @@ dtb-$(CONFIG_ARCH_MSM8909) += msm8909-sim.dtb \
 	msm8909-pm8916-qrd-skut-evt.dtb \
 	msm8909-pm8916-qrd-skut-dvt.dtb \
 	msm8909-pm8916-qrd-skuq.dtb \
+	msm8909-pm8916-zte-draco.dtb \
+	msm8909-pm8916-zte-chapel.dtb \
+	msm8909-pm8916-zte-elden.dtb \
+	msm8909-pm8916-zte-forbes.dtb \
+	msm8909-pm8916-zte-sweet.dtb \
+	msm8909-pm8916-zte-refuge.dtb \
+	msm8909-pm8909-zte-gemi.dtb \
+	msm8909-pm8909-zte-helen.dtb \
+	msm8909-pm8916-zte-jeff.dtb \
+	msm8909-pm8916-zte-kelly.dtb \
+	msm8909-pm8916-zte-sapphire.dtb \
+	msm8909-pm8909-zte-sapphire.dtb \
+	msm8909-pm8909-zte-kelly.dtb \
+	msm8909-pm8909-zte-grayjoylite.dtb \
+	msm8909-pm8909-zte-lewis.dtb \
+	msm8909-pm8909-zte-calbee.dtb \
 	msm8208-cdp.dtb \
 	msm8208-mtp.dtb \
 	msm8208-1gb-cdp.dtb \
