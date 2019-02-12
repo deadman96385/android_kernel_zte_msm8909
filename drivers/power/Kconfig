@@ -204,6 +204,17 @@ config BATTERY_MAX17042
 	  with MAX17042. This driver also supports max17047/50 chips which are
 	  improved version of max17042.
 
+config BATTERY_MAX17055
+	tristate "Maxim MAX17055 Fuel Gauge"
+	depends on I2C
+	help
+	  MAX17042 is fuel-gauge systems for lithium-ion (Li+) batteries
+	  in handheld and portable equipment. The MAX17042 is configured
+	  to operate with a single lithium cell. MAX8997 and MAX8966 are
+	  multi-function devices that include fuel gauages that are compatible
+	  with MAX17042. This driver also supports max17047/50 chips which are
+	  improved version of max17042.
+
 config BATTERY_Z2
 	tristate "Z2 battery driver"
 	depends on I2C && MACH_ZIPIT2
@@ -552,6 +563,35 @@ config MSM_BCL_PERIPHERAL_CTL
 	  Say Y here to enable this BCL PMIC peripheral driver. This driver
 	  provides routines to configure and monitor the BCL
 	  PMIC peripheral.
+
+config TI24x9x_CHARGER
+	tristate "TI 24x9x Charger"
+	depends on I2C
+	help
+	  Say Y to include support for TI 24x9x Charger.
+
+config TI25601_CHARGER
+        tristate "TI 25601 Charger"
+        depends on I2C
+        help
+          Say Y to include support for TI 25601 Charger.
+
+config TI27520_BMS
+	tristate "TI bq27520 BMS"
+	depends on I2C
+	help
+	  Say Y to include support for TI bq27520 BMS.
+
+config LC709203F_FG
+	tristate "lc709203f_fg"
+	depends on I2C
+	help
+	  Say Y to include support for lc709203f_fg.
+
+config ZTE_HALL_AVAILABLE
+       	tristate "Hall available"
+	help
+	  Support Hall sensor for ZTE devices
 
 source "drivers/power/reset/Kconfig"
 
