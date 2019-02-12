@@ -26,7 +26,7 @@
 #include <linux/workqueue.h>
 #include <linux/module.h>
 #include <linux/slab.h>
-#include <linux/input/kionix_accel.h>
+#include "kionix_accel.h"
 #include <linux/version.h>
 #include <linux/proc_fs.h>
 #include <linux/regulator/consumer.h>
@@ -69,7 +69,7 @@
 #define KIONIX_ACCEL_WHO_AM_I_KXCJ9_1008	0x0A
 #define KIONIX_ACCEL_WHO_AM_I_KXTJ2_1029 0x09
 #define KIONIX_ACCEL_WHO_AM_I_KXCJK_1013	0x11
-
+#define KIONIX_ACCEL_WHO_AM_I_KXTJ3_1035	0x35
 
 
 /******************************************************************************
@@ -1738,6 +1738,10 @@ static int kionix_verify(struct kionix_accel_driver *acceld)
 		KMSGINF(&acceld->client->dev,
 			"this accelerometer is a KXCJK-1013.\n");
 		break;
+	case KIONIX_ACCEL_WHO_AM_I_KXTJ3_1035:
+		KMSGINF(&acceld->client->dev,
+			"this accelerometer is a KXTJ3-1035.\n");
+		break;
 	default:
 		break;
 	}
@@ -2258,7 +2262,8 @@ static int kionix_accel_probe(struct i2c_client *client,
 	case KIONIX_ACCEL_WHO_AM_I_KXCJ9_1008:
 	case KIONIX_ACCEL_WHO_AM_I_KXTJ2_1029:
 	case KIONIX_ACCEL_WHO_AM_I_KXCJK_1013:
-		if (err == KIONIX_ACCEL_WHO_AM_I_KXTJ2_1029)
+	case KIONIX_ACCEL_WHO_AM_I_KXTJ3_1035:
+		if ((err == KIONIX_ACCEL_WHO_AM_I_KXTJ2_1029) || (err == KIONIX_ACCEL_WHO_AM_I_KXTJ3_1035))
 			acceld->accel_group = KIONIX_ACCEL_GRP5;
 		else if (err == KIONIX_ACCEL_WHO_AM_I_KXCJK_1013)
 			acceld->accel_group = KIONIX_ACCEL_GRP6;

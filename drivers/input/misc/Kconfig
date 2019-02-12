@@ -198,6 +198,33 @@ config INPUT_MMA8450
 	  To compile this driver as a module, choose M here: the
 	  module will be called mma8450.
 
+# add ALSProx sensor
+
+config SENSORS_TSL2771
+	tristate "Taos TSL2771 ambient light and prox sensor"
+	depends on I2C
+	default n
+	help
+	  If you say yes here you get support for the Taos TSL2771
+	  ambient light and prox sensor.
+
+config SENSORS_LTR559
+	tristate "Liteon LTR559 ambient light and prox sensor"
+	depends on I2C
+	default n
+	help
+	  If you say yes here you get support for the Liteon LTR559
+	  ambient light and prox sensor.
+
+config SENSORS_RPR0521
+	tristate "ROHM RPR0521 ambient light and prox sensor"
+	depends on I2C
+	default n
+	help
+	  If you say yes here you get support for the ROHM RPR0521
+	  ambient light and prox sensor.
+# add ALSProx sensor end
+
 config INPUT_MPU3050
 	tristate "MPU3050 Triaxial gyroscope sensor"
 	depends on I2C
@@ -332,6 +359,7 @@ config INPUT_ATI_REMOTE2
 
 config INPUT_KEYCHORD
 	tristate "Key chord input driver support"
+	default y
 	help
 	  Say Y here if you want to enable the key chord driver
 	  accessible at /dev/keychord.  This driver can be used
@@ -366,12 +394,32 @@ config INPUT_KXTJ9
 	  To compile this driver as a module, choose M here: the module will
 	  be called kxtj9.
 
+config INPUT_KXTJ2
+	tristate "Kionix KXTJ2 tri-axis digital accelerometer"
+	depends on I2C
+	help
+	  Say Y here to enable support for the Kionix KXTJ2 digital tri-axis
+	  accelerometer.
+
+	  To compile this driver as a module, choose M here: the module will
+	  be called kxtj2.
+
 config INPUT_KXTJ9_POLLED_MODE
 	bool "Enable polling mode support"
 	depends on INPUT_KXTJ9
 	select INPUT_POLLDEV
 	help
 	  Say Y here if you need accelerometer to work in polling mode.
+
+config SENSORS_N2DM
+	tristate "Kionix N2DM tri-axis digital accelerometer"
+	depends on I2C
+	help
+	  Say Y here to enable support for the N2DM digital tri-axis
+	  accelerometer.
+
+	  To compile this driver as a module, choose M here: the module will
+	  be called N2DM.
 
 config INPUT_POWERMATE
 	tristate "Griffin PowerMate and Contour Jog support"
@@ -871,7 +919,14 @@ config SENSORS_BMI160_I2C
 	tristate "support I2C bus communication"
 	depends on SENSORS_BMI160 && I2C
 	help
-	 If you say yes here, you get support Bosch Sensortec's BMI160 sensor hooked to an I2C bus.
+	If you say yes here, you get support Bosch Sensortec's BMI160 sensor hooked to an I2C bus.
+
+config SENSORS_LSM6DS3
+	tristate "LSM6DS3 Sensor Support"
+	depends on I2C || SPI_MASTER
+	help
+	If you say yes here, you get support for ST Sensortec's
+        sensor driver of LSM6DS3.
 
 config BMI160_MAG_INTERFACE_SUPPORT
 	tristate "BMI160 Sensor mag interface support"
@@ -893,5 +948,11 @@ config SENSORS_BMI160_ENABLE_INT2
 	help
 	 If you say yes here, you get INT2 support for Bosch Sensortec
 	 sensors BMI160.
+
+config SENSORS_MC3XXX
+	tristate "MC3XXX Sensor support"
+	depends on I2C
+	help
+	 If you say yes here, you get support for mcube sensors MC3XXX.
 endif
 

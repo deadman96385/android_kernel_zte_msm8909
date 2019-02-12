@@ -47,7 +47,7 @@ static struct sensors_classdev accel_cdev = {
 	.max_range = "156.8",
 	.resolution = "0.00781",
 	.sensor_power = "0.13",
-	.min_delay = 1000,
+	.min_delay = 10000,
 	.fifo_reserved_event_count = 0,
 	.fifo_max_event_count = 0,
 	.enabled = 0,
@@ -68,7 +68,7 @@ static struct sensors_classdev gyro_cdev = {
 	.max_range = "35",
 	.resolution = "0.06",
 	.sensor_power = "0.13",
-	.min_delay = 2000,
+	.min_delay = 10000,
 	.fifo_reserved_event_count = 0,
 	.fifo_max_event_count = 0,
 	.enabled = 0,
@@ -326,10 +326,13 @@ static struct workqueue_struct *reportdata_wq;
 #define FIFO_SENSORTIME_RESOLUTION              (390625)
 
 static uint8_t s_fifo_data_buf[FIFO_DATA_BUFSIZE * 2] = {0};
+
+#if defined(BMI160_ENABLE_INT1) || defined(BMI160_ENABLE_INT2)
 static uint64_t sensor_time_old = 0;
 static uint64_t sensor_time_new = 0;
 static uint64_t host_time_old = 0;
 static uint64_t host_time_new = 0;
+#endif
 
 #define BMI_RING_BUF_SIZE 100
 
@@ -781,6 +784,8 @@ static int bmi_check_chip_id(struct bmi_client_data *client_data)
 			mdelay(1);
 		}
 	}
+
+	dev_info(client_data->dev, "bmi160 chip_id=%d\n", chip_id);
 	return err;
 
 }
@@ -874,6 +879,7 @@ static void bmi_work_func(struct work_struct *work)
 	struct bmi160_accel_t data;
 	struct bmi160_axis_data_t bmi160_udata;
 	int err;
+	ktime_t timestamp;
 
 	err = BMI_CALL_API(read_accel_xyz)(&data);
 	if (err < 0)
@@ -885,9 +891,12 @@ static void bmi_work_func(struct work_struct *work)
 
 	bmi_remap_sensor_data(&bmi160_udata, client_data);
 	/*report current frame via input event*/
+	timestamp = ktime_get_boottime();
 	input_event(client_data->input_accel, EV_ABS, ABS_X, bmi160_udata.x);
 	input_event(client_data->input_accel, EV_ABS, ABS_Y, bmi160_udata.y);
 	input_event(client_data->input_accel, EV_ABS, ABS_Z, bmi160_udata.z);
+	input_event(client_data->input_accel, EV_SYN, SYN_TIME_SEC, ktime_to_timespec(timestamp).tv_sec);
+	input_event(client_data->input_accel, EV_SYN, SYN_TIME_NSEC, ktime_to_timespec(timestamp).tv_nsec);
 	input_sync(client_data->input_accel);
 
 	schedule_delayed_work(&client_data->work, delay);
@@ -903,6 +912,7 @@ static void bmi_gyro_work_func(struct work_struct *work)
 	struct bmi160_gyro_t data;
 	struct bmi160_axis_data_t bmi160_udata;
 	int err;
+	ktime_t timestamp;
 
 	err = BMI_CALL_API(read_gyro_xyz)(&data);
 	if (err < 0)
@@ -914,9 +924,12 @@ static void bmi_gyro_work_func(struct work_struct *work)
 
 	bmi_remap_sensor_data(&bmi160_udata, client_data);
 	/*report current frame via input event*/
+	timestamp = ktime_get_boottime();
 	input_event(client_data->input_gyro, EV_ABS, ABS_RX, bmi160_udata.x);
 	input_event(client_data->input_gyro, EV_ABS, ABS_RY, bmi160_udata.y);
 	input_event(client_data->input_gyro, EV_ABS, ABS_RZ, bmi160_udata.z);
+	input_event(client_data->input_gyro, EV_SYN, SYN_TIME_SEC, ktime_to_timespec(timestamp).tv_sec);
+	input_event(client_data->input_gyro, EV_SYN, SYN_TIME_NSEC, ktime_to_timespec(timestamp).tv_nsec);
 	input_sync(client_data->input_gyro);
 
 	schedule_delayed_work(&client_data->gyro_work, delay);
@@ -4160,14 +4173,14 @@ static int bmi_ring_buf_put(struct bmi160_value_t data)
 	if (bmi_ring_buf_full())
 		return 0;
 
-	bmi_ring_buf[s_ring_buf_tail].acc.x = data.acc.x; 
+	bmi_ring_buf[s_ring_buf_tail].acc.x = data.acc.x;
 	bmi_ring_buf[s_ring_buf_tail].acc.y = data.acc.y;
 	bmi_ring_buf[s_ring_buf_tail].acc.z = data.acc.z;
-	bmi_ring_buf[s_ring_buf_tail].gyro.x = data.gyro.x; 
+	bmi_ring_buf[s_ring_buf_tail].gyro.x = data.gyro.x;
 	bmi_ring_buf[s_ring_buf_tail].gyro.y = data.gyro.y;
 	bmi_ring_buf[s_ring_buf_tail].gyro.z = data.gyro.z;
 #ifdef BMI160_MAG_INTERFACE_SUPPORT
-	bmi_ring_buf[s_ring_buf_tail].mag.x = data.mag.x; 
+	bmi_ring_buf[s_ring_buf_tail].mag.x = data.mag.x;
 	bmi_ring_buf[s_ring_buf_tail].mag.y = data.mag.y;
 	bmi_ring_buf[s_ring_buf_tail].mag.z = data.mag.z;
 #endif
@@ -4618,6 +4631,34 @@ static irqreturn_t bmi_irq_handler(int irq, void *handle)
 }
 #endif /* defined(BMI_ENABLE_INT1)||defined(BMI_ENABLE_INT2) */
 
+static int bmi_ring_buf_empty(void)
+{
+	return s_ring_buf_head == s_ring_buf_tail;
+}
+
+static int bmi_ring_buf_get(struct bmi160_value_t *pData)
+{
+	if (bmi_ring_buf_empty())
+		return 0;
+
+	pData->acc.x = bmi_ring_buf[s_ring_buf_head].acc.x;
+	pData->acc.y = bmi_ring_buf[s_ring_buf_head].acc.y;
+	pData->acc.z = bmi_ring_buf[s_ring_buf_head].acc.z;
+	pData->gyro.x = bmi_ring_buf[s_ring_buf_head].gyro.x;
+	pData->gyro.y = bmi_ring_buf[s_ring_buf_head].gyro.y;
+	pData->gyro.z = bmi_ring_buf[s_ring_buf_head].gyro.z;
+#ifdef BMI160_MAG_INTERFACE_SUPPORT
+	pData->mag.x = bmi_ring_buf[s_ring_buf_head].mag.x;
+	pData->mag.y = bmi_ring_buf[s_ring_buf_head].mag.y;
+	pData->mag.z = bmi_ring_buf[s_ring_buf_head].mag.z;
+#endif
+	pData->ts_intvl = bmi_ring_buf[s_ring_buf_head].ts_intvl;
+
+	s_ring_buf_head = (s_ring_buf_head + 1) % BMI_RING_BUF_SIZE;
+
+	return 1;
+}
+
 static int bmi_restore_hw_cfg(struct bmi_client_data *client)
 {
 	int err = 0;
@@ -4808,8 +4849,8 @@ static int bmi160_accel_poll_delay(struct sensors_classdev *sensors_cdev,
 
 	if (delay_ms < 10)
 		delay_ms = 10;
-	if (delay_ms > 10)
-		delay_ms = 10;
+	/* if (delay_ms > 10)
+		delay_ms = 10; */
 	atomic_set(&data->delay, (unsigned int) delay_ms);
 	return 0;
 }
@@ -4831,8 +4872,8 @@ static int bmi160_gyro_poll_delay(struct sensors_classdev *sensors_cdev,
 
 	if (delay_ms < 10)
 		delay_ms = 10;
-	if (delay_ms > 10)
-		delay_ms = 10;
+	/* if (delay_ms > 10)
+		delay_ms = 10; */
 	atomic_set(&data->delay, (unsigned int) delay_ms);
 	return 0;
 }
@@ -4847,6 +4888,27 @@ static int bmi160_cdev_enable_gyro(struct sensors_classdev *sensors_cdev,
 	return 0;
 }
 
+/*add by luxiazi for parsing place  begin*/
+static int bmi160_parse_dt(struct device *dev, struct bosch_sensor_specific *bst_pd)
+{
+	struct device_node *np = dev->of_node;
+	u32 temp_val;
+	int rc;
+
+	rc = of_property_read_u32(np, "bosch,place", &temp_val);
+	if (rc < 0) {
+		dev_err(dev, "Unable to read place\n");
+		goto exit;
+	} else {
+		bst_pd->place = temp_val;
+	}
+
+	return 0;
+
+exit:
+	return rc;
+}
+/*add by luxiazi for parsing place  end*/
 
 int bmi_probe(struct bmi_client_data *client_data, struct device *dev)
 {
@@ -4917,7 +4979,8 @@ int bmi_probe(struct bmi_client_data *client_data, struct device *dev)
 		return err;
 	}
 
-	if (NULL != dev->platform_data) {
+	/*add by luxiazi for parsing place  begin*/
+	/*if (NULL != dev->platform_data) {
 		client_data->bst_pd = kzalloc(sizeof(*client_data->bst_pd),
 				GFP_KERNEL);
 
@@ -4936,7 +4999,19 @@ int bmi_probe(struct bmi_client_data *client_data, struct device *dev)
 		dev_notice(dev, "%s sensor driver set place: p%d\n",
 				client_data->bst_pd->name,
 				client_data->bst_pd->place);
+	}*/
+
+	if (dev->of_node != NULL) {
+		client_data->bst_pd = kzalloc(sizeof(*client_data->bst_pd),
+				GFP_KERNEL);
+		if (!client_data->bst_pd) {
+			dev_err(&client_data->i2c->dev, "Failed to allcated memory\n");
+			err = -ENOMEM;
+			goto kfree_exit;
+		}
+		bmi160_parse_dt(dev, client_data->bst_pd);
 	}
+	/*add by luxiazi for parsing place  end*/
 
 	/* workqueue init */
 	INIT_DELAYED_WORK(&client_data->work, bmi_work_func);
@@ -5073,11 +5148,14 @@ int bmi_probe(struct bmi_client_data *client_data, struct device *dev)
 	/*close step_detector in init function*/
 	BMI_CALL_API(set_step_detector_enable)(0);
 #endif
+
+#if defined(BMI160_ENABLE_INT1) || defined(BMI160_ENABLE_INT2)
 	err = request_irq(client_data->IRQ, bmi_irq_handler,
 			IRQF_TRIGGER_RISING, "bmi160", client_data);
 	if (err)
 		dev_err(client_data->dev, "could not request irq\n");
 	INIT_WORK(&client_data->irq_work, bmi_irq_work_func);
+#endif
 
 	client_data->selftest = 0;
 
@@ -5121,6 +5199,8 @@ exit_err_clean:
 			}
 		}
 	}
+kfree_exit:
+	kfree(client_data);
 
 	return err;
 }
