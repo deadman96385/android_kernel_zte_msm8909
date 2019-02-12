@@ -39,7 +39,7 @@
 #include <asm/uaccess.h>
 #include <asm/setup.h>
 #include <asm-generic/io-64-nonatomic-lo-hi.h>
-
+#include <linux/reboot.h>
 #include "peripheral-loader.h"
 
 #define pil_err(desc, fmt, ...)						\
@@ -381,6 +381,8 @@ static int pil_alloc_region(struct pil_priv *priv, phys_addr_t min_addr,
 	if (region == NULL) {
 		pil_err(priv->desc, "Failed to allocate relocatable region of size %zx\n",
 					size);
+		priv->region_start = 0;
+		priv->region_end = 0;
 		return -ENOMEM;
 	}
 
@@ -731,6 +733,11 @@ int pil_boot(struct pil_desc *desc)
 		ret = desc->ops->init_image(desc, fw->data, fw->size);
 	if (ret) {
 		pil_err(desc, "Invalid firmware metadata\n");
+#if defined(CONFIG_ZTE_PIL_AUTH_ERROR_DETECTION) || defined(VZW)
+		if (ret == -ENOEXEC) {
+			kernel_restart("unauth");
+		}
+#endif
 		goto err_boot;
 	}
 
@@ -751,6 +758,11 @@ int pil_boot(struct pil_desc *desc)
 	ret = desc->ops->auth_and_reset(desc);
 	if (ret) {
 		pil_err(desc, "Failed to bring out of reset\n");
+#if defined(CONFIG_ZTE_PIL_AUTH_ERROR_DETECTION) || defined(VZW)
+		if (ret == -ENOEXEC) {
+			kernel_restart("unauth");
+		}
+#endif
 		goto err_deinit_image;
 	}
 	pil_info(desc, "Brought out of reset\n");

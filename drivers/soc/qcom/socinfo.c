@@ -32,6 +32,7 @@
 #include <soc/qcom/socinfo.h>
 #include <soc/qcom/smem.h>
 #include <soc/qcom/boot_stats.h>
+#include <linux/of_address.h>
 
 #define BUILD_ID_LENGTH 32
 #define SMEM_IMAGE_VERSION_BLOCKS_COUNT 32
@@ -990,6 +991,30 @@ static struct device_attribute select_image =
 	__ATTR(select_image, S_IRUGO | S_IWUSR,
 			msm_get_image_number, msm_select_image);
 
+static char *socinfo_zte_hw_ver = NULL;
+
+void socinfo_set_hw_ver(char *ver)
+{
+	socinfo_zte_hw_ver = ver;
+}
+
+static ssize_t socinfo_show_zte_hw_ver(struct device *dev,
+				       struct device_attribute *attr,
+				       char *buf)
+{
+	if (!socinfo_zte_hw_ver)
+		return snprintf(buf, PAGE_SIZE, "%s\n", "INVALID Hardware version");
+
+	return snprintf(buf, PAGE_SIZE, "%s\n", socinfo_zte_hw_ver);
+}
+
+/*
+ * Defined for op in
+ * '/sys/devices/soc0/zte_hw_ver'
+ */
+static struct device_attribute zte_hw_ver =
+	__ATTR(zte_hw_ver, S_IRUGO, socinfo_show_zte_hw_ver, NULL);
+
 static void * __init setup_dummy_socinfo(void)
 {
 	if (early_machine_is_apq8084()) {
@@ -1052,6 +1077,8 @@ static void __init populate_soc_sysfs_files(struct device *msm_soc_device)
 	device_create_file(msm_soc_device, &image_variant);
 	device_create_file(msm_soc_device, &image_crm_version);
 	device_create_file(msm_soc_device, &select_image);
+
+	device_create_file(msm_soc_device, &zte_hw_ver);
 
 	switch (legacy_format) {
 	case 10:
@@ -1439,3 +1466,58 @@ const int cpu_is_krait_v3(void)
 		return 0;
 	};
 }
+
+/*
+ * Support for FTM & RECOVERY mode by ZTE_BOOT_JIA_20130107, jia.jia
+ */
+#ifdef CONFIG_ZTE_BOOT_MODE
+static int ftm_flag = 0;
+
+void socinfo_set_ftm_flag(int val)
+{
+	ftm_flag = val;
+}
+
+int socinfo_get_ftm_flag(void)
+{
+	return ftm_flag;
+}
+
+static int recovery_flag = 0;
+
+void socinfo_set_recovery_flag(int val)
+{
+	recovery_flag = val;
+}
+
+int socinfo_get_recovery_flag(void)
+{
+	return recovery_flag;
+}
+
+static int offcharging_flag = 0;
+
+void socinfo_set_charging_flag(int val)
+{
+	offcharging_flag = val;
+}
+
+int socinfo_get_charging_flag(void)
+{
+	return offcharging_flag;
+}
+/*add code for pv version*/
+static int pv_flag;
+
+void socinfo_set_pv_flag(int val)
+{
+	pv_flag = val;
+}
+
+int socinfo_get_pv_flag(void)
+{
+	return pv_flag;
+}
+
+
+#endif

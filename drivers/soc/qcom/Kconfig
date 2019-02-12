@@ -572,5 +572,6 @@ config MSM_PERFORMANCE_HOTPLUG_ON
           msm_performance.
 
 source "drivers/soc/qcom/memshare/Kconfig"
+source "drivers/soc/qcom/vendor/Kconfig"
 
 endif # ARCH_MSM

@@ -22,6 +22,7 @@
 #include <linux/sched.h>
 #include <linux/of.h>
 #include <linux/of_address.h>
+#include <soc/qcom/socinfo.h>
 
 struct boot_stats {
 	uint32_t bootloader_start;
@@ -104,3 +105,76 @@ int boot_stats_init(void)
 	return 0;
 }
 
+/*
+ * Support for FTM & RECOVERY mode by ZTE_BOOT_RXZ_20131018 ruan.xianzhang
+ */
+#ifdef CONFIG_ZTE_BOOT_MODE
+#define SOCINFO_CMDLINE_BOOTMODE          "androidboot.mode="
+#define SOCINFO_CMDLINE_BOOTMODE_NORMAL   "normal"
+#define SOCINFO_CMDLINE_BOOTMODE_FTM      "ftm"
+#define SOCINFO_CMDLINE_BOOTMODE_RECOVERY "recovery"
+#define SOCINFO_CMDLINE_BOOTMODE_CHARGER  "charger"
+static int __init bootmode_init(char *mode)
+{
+	int is_boot_into_ftm = 0;
+	int is_boot_into_recovery = 0;
+	int is_boot_into_charger = 0;
+
+	if (!strncmp(mode, SOCINFO_CMDLINE_BOOTMODE_NORMAL, strlen(SOCINFO_CMDLINE_BOOTMODE_NORMAL))) {
+		is_boot_into_ftm = 0;
+		is_boot_into_recovery = 0;
+		is_boot_into_charger = 0;
+	} else if (!strncmp(mode, SOCINFO_CMDLINE_BOOTMODE_FTM, strlen(SOCINFO_CMDLINE_BOOTMODE_FTM))) {
+		is_boot_into_ftm = 1;
+		is_boot_into_recovery = 0;
+		is_boot_into_charger = 0;
+	} else if (!strncmp(mode, SOCINFO_CMDLINE_BOOTMODE_RECOVERY, strlen(SOCINFO_CMDLINE_BOOTMODE_RECOVERY))) {
+		is_boot_into_ftm = 0;
+		is_boot_into_recovery = 1;
+		is_boot_into_charger = 0;
+	} else if (!strncmp(mode, SOCINFO_CMDLINE_BOOTMODE_CHARGER, strlen(SOCINFO_CMDLINE_BOOTMODE_CHARGER))) {
+		is_boot_into_ftm = 0;
+		is_boot_into_recovery = 0;
+		is_boot_into_charger = 1;
+	} else {
+		is_boot_into_ftm = 0;
+		is_boot_into_recovery = 0;
+		is_boot_into_charger = 0;
+	}
+
+	socinfo_set_ftm_flag(is_boot_into_ftm);
+	socinfo_set_recovery_flag(is_boot_into_recovery);
+	socinfo_set_charging_flag(is_boot_into_charger);
+
+	return 1;
+}
+
+__setup(SOCINFO_CMDLINE_BOOTMODE, bootmode_init);
+
+/*ZTE_PM add code for pv version*/
+#define SOCINFO_CMDLINE_PV_FLAG "androidboot.pv-version="
+#define SOCINFO_CMDLINE_PV_VERSION   "1"
+#define SOCINFO_CMDLINE_NON_PV_VERSION      "0"
+static int __init zte_pv_flag_init(char *ver)
+{
+	int is_pv_ver = 0;
+
+	if (!strncmp(ver, SOCINFO_CMDLINE_PV_VERSION, strlen(SOCINFO_CMDLINE_PV_VERSION))) {
+		is_pv_ver = 1;
+	}
+	/*printk(KERN_ERR "pv flag: %d ", is_pv_ver);*/
+	socinfo_set_pv_flag(is_pv_ver);
+	return 0;
+}
+__setup(SOCINFO_CMDLINE_PV_FLAG, zte_pv_flag_init);
+
+#endif /* CONFIG_ZTE_BOOT_MODE */
+
+static int __init zte_hw_ver_init(char *ver)
+{
+	socinfo_set_hw_ver(ver);
+	return 0;
+}
+
+#define SOCINFO_CMDLINE_HW_VER "androidboot.hw_ver="
+__setup(SOCINFO_CMDLINE_HW_VER, zte_hw_ver_init);

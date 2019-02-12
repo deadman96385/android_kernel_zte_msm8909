@@ -24,7 +24,7 @@
 #include <linux/regulator/consumer.h>
 #include <linux/dma-mapping.h>
 #include <soc/qcom/scm.h>
-
+#include <linux/reboot.h>
 #include "peripheral-loader.h"
 #include "pil-q6v5.h"
 #include "pil-msa.h"
@@ -406,8 +406,12 @@ static int pil_mss_reset(struct pil_desc *pil)
 	/* Wait for MBA to start. Check for PBL and MBA errors while waiting. */
 	if (drv->self_auth) {
 		ret = pil_msa_wait_for_mba_ready(drv);
-		if (ret)
+		if (ret) {
+#if defined(CONFIG_ZTE_PIL_AUTH_ERROR_DETECTION) || defined(VZW)
+			kernel_restart("unauth");
+#endif
 			goto err_q6v5_reset;
+		}
 	}
 
 	dev_info(pil->dev, "MBA boot done\n");
@@ -551,7 +555,11 @@ static int pil_msa_auth_modem_mdt(struct pil_desc *pil, const u8 *metadata,
 	}
 
 	dma_free_attrs(&drv->mba_mem_dev, size, mdata_virt, mdata_phys, &attrs);
-
+#if defined(CONFIG_ZTE_PIL_AUTH_ERROR_DETECTION) || defined(VZW)
+	if (ret) {
+		kernel_restart("unauth");
+	}
+#endif
 	if (!ret)
 		return ret;
 
@@ -636,6 +644,11 @@ static int pil_msa_mba_auth(struct pil_desc *pil)
 	if (q6_drv->ahb_clk_vote)
 		clk_disable_unprepare(q6_drv->ahb_clk);
 
+#if defined(CONFIG_ZTE_PIL_AUTH_ERROR_DETECTION) || defined(VZW)
+	if (ret) {
+		kernel_restart("unauth");
+	}
+#endif
 	return ret;
 }
 

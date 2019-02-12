@@ -44,6 +44,7 @@
 #include <soc/qcom/smem.h>
 #include <soc/qcom/subsystem_notif.h>
 #include <soc/qcom/subsystem_restart.h>
+#include <soc/qcom/socinfo.h>
 
 #include "smd_private.h"
 #include "smem_private.h"
@@ -1390,6 +1391,15 @@ static void handle_smd_irq_closing_list(void)
 	spin_unlock_irqrestore(&smd_lock, flags);
 }
 
+/*ZTE_PM ++++ */
+extern int zte_smd_wakeup;
+int zte_qmi_data_wakeup	= 0;
+int zte_qmi_state_change_wakeup	= 0;
+extern unsigned char is_qmi_channel(char *channel_name);
+int not_rpm_smd	= 0;
+int rpm_smd_logged = 0;
+/*ZTE_PM ---- */
+
 static void handle_smd_irq(struct remote_proc_info *r_info,
 		void (*notify)(smd_channel_t *ch))
 {
@@ -1424,6 +1434,24 @@ static void handle_smd_irq(struct remote_proc_info *r_info,
 		if (tmp != ch->last_state) {
 			SMD_POWER_INFO("SMD ch%d '%s' State change %d->%d\n",
 					ch->n, ch->name, ch->last_state, tmp);
+
+			/*ZTE_PM ++++ notes:SMD wakeup reason*/
+			if (zte_smd_wakeup &&
+					(ch->type != SMD_APPS_RPM || (ch->type == SMD_APPS_RPM && !rpm_smd_logged))) {
+				const char *subsys = smd_edge_to_subsystem(ch->type);
+
+				pr_info("zte_smd_wakeup: %s wakeup app, SMD ch%d\n", subsys, ch->n);
+				pr_info("zte:'%s' state change %d->%d\n", ch->name, ch->last_state, tmp);
+				if (is_qmi_channel(ch->name))
+					zte_qmi_state_change_wakeup = 1;
+
+				if (ch->type != SMD_APPS_RPM)
+					not_rpm_smd = 1;
+				else
+					rpm_smd_logged = 1;
+			}
+			/*ZTE_PM ---- */
+
 			smd_state_change(ch, ch->last_state, tmp);
 			state_change = 1;
 		}
@@ -1441,14 +1469,54 @@ static void handle_smd_irq(struct remote_proc_info *r_info,
 				ch->half_ch->get_tail(ch->recv),
 				ch->half_ch->get_head(ch->recv)
 				);
+
+			/*ZTE_PM ++++ notes:SMD wakeup reason*/
+			if (zte_smd_wakeup &&
+					(ch->type != SMD_APPS_RPM || (ch->type == SMD_APPS_RPM && !rpm_smd_logged))) {
+				const char *subsys = smd_edge_to_subsystem(ch->type);
+
+				pr_info("zte:%s wakeup app, SMD ch %d '%s' Data event\n", subsys, ch->n, ch->name);
+				if (is_qmi_channel(ch->name))
+					zte_qmi_data_wakeup = 1;
+
+				if (ch->type != SMD_APPS_RPM)
+					not_rpm_smd = 1;
+				else
+					rpm_smd_logged = 1;
+			}
+			/*ZTE_PM ---- */
+
 			ch->notify(ch->priv, SMD_EVENT_DATA);
 		}
 		if (ch_flags & 0x4 && !state_change) {
 			SMD_POWER_INFO("SMD ch%d '%s' State update\n",
 					ch->n, ch->name);
+
+			/*ZTE_PM ++++ notes:SMD wakeup reason*/
+			if (zte_smd_wakeup &&
+					(ch->type != SMD_APPS_RPM || (ch->type == SMD_APPS_RPM && !rpm_smd_logged))) {
+				const char *subsys = smd_edge_to_subsystem(ch->type);
+
+				pr_info("zte:%s wakeup app, SMD ch %d '%s' State update\n", subsys, ch->n, ch->name);
+				if (ch->type != SMD_APPS_RPM)
+					not_rpm_smd = 1;
+				else
+					rpm_smd_logged = 1;
+			}
+			/*ZTE_PM ---- */
+
 			ch->notify(ch->priv, SMD_EVENT_STATUS);
 		}
 	}
+
+	/*ZTE_PM ++++ notes:SMD wakeup reason*/
+	if (not_rpm_smd) {
+		zte_smd_wakeup = 0;
+		rpm_smd_logged = 0;
+	}
+	not_rpm_smd = 0;
+	/*ZTE_PM ---- */
+
 	spin_unlock_irqrestore(&smd_lock, flags);
 	do_smd_probe(r_info->remote_pid);
 }
@@ -2001,7 +2069,23 @@ int smd_named_open_on_edge(const char *name, uint32_t edge,
 
 	return 0;
 }
+/*ZTE ++++ */
 EXPORT_SYMBOL(smd_named_open_on_edge);
+
+int smd_open(const char *name, smd_channel_t **_ch, void *priv, void (*notify)(void *, unsigned))
+{
+	return smd_named_open_on_edge(name, SMD_APPS_MODEM, _ch, priv, notify);
+}
+EXPORT_SYMBOL(smd_open);
+/*
+EXPORT_SYMBOL(smd_named_open_on_edge_zte);
+int smd_open_zte(const char *name, smd_channel_t **_ch,
+		void *priv, void (*notify)(void *, unsigned), const char* func, int line) {
+	return smd_named_open_on_edge_zte(name, SMD_APPS_MODEM, _ch, priv, notify, func,line);
+}
+EXPORT_SYMBOL(smd_open_zte);
+*/
+/*ZTE ---- */
 
 int smd_close(smd_channel_t *ch)
 {
@@ -2407,6 +2491,30 @@ static int smsm_cb_init(void)
 	return ret;
 }
 
+/*
+ * Support for FTM & RECOVERY mode by ZTE_BOOT_JIA_20130107, jia.jia
+ */
+#ifdef CONFIG_ZTE_BOOT_MODE
+static void smem_zte_set_nv_bootmode(int bootmode)
+{
+	int *smem_bootmode = NULL;
+
+	smem_bootmode = (int *)smem_alloc(SMEM_ID_VENDOR0, sizeof(int), 0, SMEM_ANY_HOST_FLAG);
+	if (!smem_bootmode)	{
+		pr_err("%s: alloc smem failed!\n", __func__);
+		return;
+	}
+
+	/*
+	* 0: Normal mode
+	* 1: FTM mode
+	*/
+	*smem_bootmode = bootmode;
+
+	pr_info("%s: set ftm flag to smem.\n", __func__);
+}
+#endif
+
 static int smsm_init(void)
 {
 	int i;
@@ -2480,6 +2588,20 @@ static int smsm_init(void)
 	i = smsm_cb_init();
 	if (i)
 		return i;
+
+/*
+ * Support for FTM & RECOVERY mode by ZTE_BOOT_JIA_20130107, jia.jia
+ *
+ * 0: Normal mode
+ * 1: FTM mode
+ */
+#ifdef CONFIG_ZTE_BOOT_MODE
+	if (socinfo_get_ftm_flag() == 0) {
+		smem_zte_set_nv_bootmode(MAGIC_NUM_NON_FTM_MODE);
+	} else {
+		smem_zte_set_nv_bootmode(MAGIC_NUM_FTM_MODE);
+	}
+#endif
 
 	wmb();
 
