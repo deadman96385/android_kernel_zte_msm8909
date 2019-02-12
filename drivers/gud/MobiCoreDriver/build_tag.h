@@ -11,13 +11,7 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
  * GNU General Public License for more details.
  */
-#ifndef _MC_LOGGING_H_
-#define _MC_LOGGING_H_
-
-void mc_logging_run(void);
-int  mc_logging_init(void);
-void mc_logging_exit(void);
-int mc_logging_start(void);
-void mc_logging_stop(void);
-
-#endif /* _MC_LOGGING_H_ */
+#ifndef MOBICORE_COMPONENT_BUILD_TAG
+#define MOBICORE_COMPONENT_BUILD_TAG \
+	"t-base-QC-MSM8909-Android-310C-V003-20160420_095700_8316"
+#endif
