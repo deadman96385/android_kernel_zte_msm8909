@@ -102,6 +102,8 @@ struct msm_actuator_ctrl_t {
 	struct msm_actuator_vreg vreg_cfg;
 	struct park_lens_data_t park_lens;
 	uint32_t max_code_size;
+	/*add power down setting for actuator ZTE_CAM_LIJING_20170427*/
+	uint32_t vcm_pwd;
 };
 
 #endif

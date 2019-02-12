@@ -17,6 +17,12 @@
 #include "camera.h"
 #include "msm_cci.h"
 #include "msm_camera_dt_util.h"
+/*
+  * use  camera sensor engineering mode  interface
+  * use  test camera sensor mipi clock interface
+  * by ZTE_YCM_20140710 yi.changming 000006
+  */
+#include "zte_camera_sensor_util.h"
 
 /* Logging macro */
 #undef CDBG
@@ -144,6 +150,27 @@ static int32_t msm_sensor_driver_create_v4l_subdev
 
 	return rc;
 }
+/*
+  * add  camera sensor engineering mode  show module_name
+  *
+  * by ZTE_WQW_20151204 weiqiwei
+  */
+#define	ZTE_EEPROM_ERROR -1
+extern char *msm_eeprom_get_post_sensor_module_name(void);
+static int32_t msm_get_info_from_eeprom(
+		struct msm_sensor_ctrl_t *s_ctrl, struct device_node *eeprom_node)
+{
+	if (!eeprom_node) {
+		pr_err("%s: can't find eeprom sensor phandle\n", __func__);
+		return ZTE_EEPROM_ERROR;
+	}
+
+	s_ctrl->sensordata->sensor_module_name = msm_eeprom_get_post_sensor_module_name();
+	pr_err("%s:%d: sensor_module_name:%s\n", __func__, __LINE__, s_ctrl->sensordata->sensor_module_name);
+
+	return 0;
+}
+
 
 static int32_t msm_sensor_fill_eeprom_subdevid_by_name(
 				struct msm_sensor_ctrl_t *s_ctrl)
@@ -209,7 +236,12 @@ static int32_t msm_sensor_fill_eeprom_subdevid_by_name(
 			of_node_put(src_node);
 			continue;
 		}
-
+/*
+  * add  camera sensor engineering mode  show module_name
+  *
+  * by ZTE_WQW_20151204 weiqiwei
+  */
+		msm_get_info_from_eeprom(s_ctrl, src_node);
 		*eeprom_subdev_id = val;
 		CDBG("Done. Eeprom subdevice id is %d\n", val);
 		of_node_put(src_node);
@@ -653,6 +685,11 @@ int32_t msm_sensor_driver_probe(void *setting,
 
 	unsigned long                        mount_pos = 0;
 	uint32_t                             is_yuv;
+/*
+ * add by lijing for flash
+ * ZTE_CAM_LIJING_20151020
+ */
+	uint32_t                             has_flash = 0;
 
 	/* Validate input parameters */
 	if (!setting) {
@@ -916,7 +953,12 @@ int32_t msm_sensor_driver_probe(void *setting,
 		s_ctrl->sensordata->sensor_info->
 			subdev_id[SUB_MODULE_LED_FLASH] = -1;
 	}
-
+/*
+ * add by lijing for flash
+ * ZTE_CAM_LIJING_20151020
+ */
+	else
+		 has_flash = 1;
 	/*
 	 * Create /dev/videoX node, comment for now until dummy /dev/videoX
 	 * node is created and used by HAL
@@ -949,17 +991,36 @@ int32_t msm_sensor_driver_probe(void *setting,
 	}
 	/* Update sensor mount angle and position in media entity flag */
 	is_yuv = (slave_info->output_format == MSM_SENSOR_YCBCR) ? 1 : 0;
+/*
+ * add by lijing for flash
+ * ZTE_CAM_LIJING_20151020
+ */
+#if 0
 	mount_pos = is_yuv << 25 |
 		(s_ctrl->sensordata->sensor_info->position << 16) |
 		((s_ctrl->sensordata->
 		sensor_info->sensor_mount_angle / 90) << 8);
-
+#else
+	mount_pos = is_yuv << 25 | has_flash << 26 |
+		(s_ctrl->sensordata->sensor_info->position << 16) |
+		((s_ctrl->sensordata->
+		sensor_info->sensor_mount_angle / 90) << 8);
+#endif
 	s_ctrl->msm_sd.sd.entity.flags = mount_pos | MEDIA_ENT_FL_DEFAULT;
 
 	/*Save sensor info*/
 	s_ctrl->sensordata->cam_slave_info = slave_info;
 
 	msm_sensor_fill_sensor_info(s_ctrl, probed_info, entity_name);
+/*
+  * use  camera sensor engineering mode  interface
+  * use  test camera sensor mipi clock interface
+  * by ZTE_YCM_20140710 yi.changming 000006
+  */
+	if (msm_sensor_enable_debugfs(s_ctrl))
+		CDBG("%s:%d creat debugfs fail\n", __func__, __LINE__);
+
+	msm_sensor_register_sysdev(s_ctrl);
 
 	return rc;
 

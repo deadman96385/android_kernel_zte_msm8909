@@ -29,7 +29,8 @@ static struct v4l2_file_operations msm_actuator_v4l2_subdev_fops;
 #define PARK_LENS_SMALL_STEP 3
 
 static int32_t msm_actuator_power_up(struct msm_actuator_ctrl_t *a_ctrl);
-static int32_t msm_actuator_power_down(struct msm_actuator_ctrl_t *a_ctrl);
+static int32_t msm_actuator_power_down(struct msm_actuator_ctrl_t *a_ctrl,
+	struct msm_actuator_pwdn_settings_t *set_info);
 
 static struct msm_actuator msm_vcm_actuator_table;
 static struct msm_actuator msm_piezo_actuator_table;
@@ -593,8 +594,100 @@ static int32_t msm_actuator_vreg_control(struct msm_actuator_ctrl_t *a_ctrl,
 	}
 	return rc;
 }
+/*add power down setting for actuator ZTE_CAM_LIJING_20170427*/
+static int32_t msm_actuator_write_pwdn_setting(struct msm_actuator_ctrl_t *a_ctrl,
+	uint16_t size, struct reg_settings_t *settings)
+{
+	int32_t rc = -EFAULT;
+	int32_t i = 0;
 
-static int32_t msm_actuator_power_down(struct msm_actuator_ctrl_t *a_ctrl)
+	CDBG("Enter\n");
+
+	for (i = 0; i < size; i++) {
+
+		switch (settings[i].addr_type) {
+		case MSM_ACTUATOR_BYTE_ADDR:
+			a_ctrl->i2c_client.addr_type = MSM_CAMERA_I2C_BYTE_ADDR;
+			break;
+		case MSM_ACTUATOR_WORD_ADDR:
+			a_ctrl->i2c_client.addr_type = MSM_CAMERA_I2C_WORD_ADDR;
+			break;
+		default:
+			pr_err("Unsupport addr type: %d\n",
+				settings[i].addr_type);
+			break;
+		}
+
+		switch (settings[i].i2c_operation) {
+		case MSM_ACT_WRITE:
+			CDBG("%s reg_addr=0x%x reg_data=%x data_type=%d\n", __func__, settings[i].reg_addr,
+				settings[i].reg_data, settings[i].data_type);
+			rc = a_ctrl->i2c_client.i2c_func_tbl->i2c_write(
+				&a_ctrl->i2c_client,
+				settings[i].reg_addr,
+				settings[i].reg_data,
+				settings[i].data_type);
+			break;
+		case MSM_ACT_POLL:
+			rc = a_ctrl->i2c_client.i2c_func_tbl->i2c_poll(
+				&a_ctrl->i2c_client,
+				settings[i].reg_addr,
+				settings[i].reg_data,
+				settings[i].data_type);
+			break;
+		default:
+			pr_err("Unsupport i2c_operation: %d\n",
+				settings[i].i2c_operation);
+			break;
+
+		if (settings[i].delay != 0)
+			msleep(settings[i].delay);
+
+		if (rc < 0)
+			break;
+		}
+	}
+	CDBG("Exit\n");
+	return rc;
+}
+
+static int32_t msm_actuator_set_pwdn_setting(struct msm_actuator_ctrl_t *a_ctrl,
+	struct msm_actuator_pwdn_settings_t *pwdn_setting)
+{
+	struct reg_settings_t *pwdn_reg_setting = NULL;
+	int32_t rc = -EFAULT;
+
+	pwdn_reg_setting = kzalloc(sizeof(struct reg_settings_t) *
+		(pwdn_setting->pwdn_setting_size), GFP_KERNEL);
+
+	if (pwdn_reg_setting == NULL) {
+		pr_err("Error allocating memory for pwdn_setting\n");
+		return -EFAULT;
+	}
+
+	if (copy_from_user(pwdn_reg_setting,
+		(void *)pwdn_setting->pwdn_reg_settings,
+		pwdn_setting->pwdn_setting_size * sizeof(struct reg_settings_t))) {
+		kfree(pwdn_reg_setting);
+		pr_err("Error copying pwdn_setting\n");
+		return -EFAULT;
+	}
+
+	rc = msm_actuator_write_pwdn_setting(a_ctrl, pwdn_setting->pwdn_setting_size, pwdn_reg_setting);
+
+	kfree(pwdn_reg_setting);
+	pwdn_reg_setting = NULL;
+
+	if (rc < 0) {
+		pr_err("Error set_pwdn_setting\n");
+		return -EFAULT;
+	}
+	return rc;
+
+}
+
+static int32_t msm_actuator_power_down(struct msm_actuator_ctrl_t *a_ctrl,
+	struct msm_actuator_pwdn_settings_t *pwdn_setting)
 {
 	int32_t rc = 0;
 	CDBG("Enter\n");
@@ -605,6 +698,15 @@ static int32_t msm_actuator_power_down(struct msm_actuator_ctrl_t *a_ctrl)
 			if (rc < 0)
 				pr_err("%s:%d Lens park failed.\n",
 					__func__, __LINE__);
+		}
+
+		/*add power down setting for actuator ZTE_CAM_LIJING_20170427*/
+		if (a_ctrl->vcm_pwd > 0 && pwdn_setting != NULL && pwdn_setting->pwdn_setting_size > 0 &&
+				pwdn_setting->pwdn_reg_settings != NULL){
+			pr_info("%s pwdn setting need to be set\n", __func__);
+			msm_actuator_set_pwdn_setting(a_ctrl, pwdn_setting);
+		} else {
+			pr_info("%s pwdn setting no need to be set\n", __func__);
 		}
 
 		rc = msm_actuator_vreg_control(a_ctrl, 0);
@@ -869,7 +971,7 @@ static int32_t msm_actuator_config(struct msm_actuator_ctrl_t *a_ctrl,
 			pr_err("move focus failed %d\n", rc);
 		break;
 	case CFG_ACTUATOR_POWERDOWN:
-		rc = msm_actuator_power_down(a_ctrl);
+		rc = msm_actuator_power_down(a_ctrl, &cdata->cfg.pwdn_setting);
 		if (rc < 0)
 			pr_err("msm_actuator_power_down failed %d\n", rc);
 		break;
@@ -1163,7 +1265,7 @@ static int32_t msm_actuator_power(struct v4l2_subdev *sd, int on)
 	if (on)
 		rc = msm_actuator_power_up(a_ctrl);
 	else
-		rc = msm_actuator_power_down(a_ctrl);
+		rc = msm_actuator_power_down(a_ctrl, NULL);
 	mutex_unlock(a_ctrl->actuator_mutex);
 	CDBG("Exit\n");
 	return rc;
@@ -1218,6 +1320,17 @@ static int32_t msm_actuator_i2c_probe(struct i2c_client *client,
 		goto probe_failure;
 	}
 
+	/*add power down setting for actuator ZTE_CAM_LIJING_20170427*/
+	act_ctrl_t->vcm_pwd = 0;
+	if (of_find_property(client->dev.of_node, "qcom,vcm-pwd", NULL)) {
+		uint32_t val;
+
+		rc = of_property_read_u32(client->dev.of_node, "qcom,vcm-pwd", &val);
+		if (!rc) {
+			act_ctrl_t->vcm_pwd = val;
+		}
+	}
+	pr_info("%s act_ctrl_t->vcm_pwd=%d\n", __func__, act_ctrl_t->vcm_pwd);
 	if (of_find_property(client->dev.of_node,
 		"qcom,cam-vreg-name", NULL)) {
 		vreg_cfg = &act_ctrl_t->vreg_cfg;

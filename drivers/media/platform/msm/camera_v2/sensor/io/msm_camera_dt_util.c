@@ -133,6 +133,9 @@ int msm_sensor_get_sub_module_index(struct device_node *of_node,
 	uint32_t *val_array = NULL;
 	struct device_node *src_node = NULL;
 	struct msm_sensor_info_t *sensor_info;
+#ifdef CONFIG_BOARD_ELDEN
+	int hw_ver;
+#endif
 
 	sensor_info = kzalloc(sizeof(*sensor_info), GFP_KERNEL);
 	if (!sensor_info) {
@@ -204,7 +207,51 @@ int msm_sensor_get_sub_module_index(struct device_node *of_node,
 	} else {
 		rc = 0;
 	}
-
+#ifdef CONFIG_BOARD_ELDEN
+	if (of_get_property(of_node, "qcom,led-flash-src", &count)) {
+		count /= sizeof(uint32_t);
+		CDBG("led flash src count is %d\n", count);
+		if (count > MAX_LED_TRIGGERS || count < 0) {
+			pr_err("invalid count\n");
+			goto ERROR;
+		}
+		hw_ver = zte_get_board_ver();
+		CDBG("zte_hw: get the  hw board version is %d\n", hw_ver);
+		if (hw_ver == 3) {
+			src_node = of_parse_phandle(of_node, "qcom,led-flash-src", 0);
+			if (!src_node) {
+				CDBG(" %s:%d  src_node NULL\n", __func__, __LINE__);
+			} else {
+				rc = of_property_read_u32(src_node, "cell-index", &val);
+				CDBG("%s qcom,led flash cell index %d, rc %d\n", __func__,
+				val, rc);
+				if (rc < 0) {
+					pr_err("%s:%d failed %d\n", __func__, __LINE__, rc);
+					goto ERROR;
+				}
+				sensor_info->subdev_id[SUB_MODULE_LED_FLASH] = val;
+				of_node_put(src_node);
+				src_node = NULL;
+			}
+		} else {
+			src_node = of_parse_phandle(of_node, "qcom,led-flash-src", 1);
+			if (!src_node) {
+				CDBG("%s:%d  src_node NULL\n", __func__, __LINE__);
+			} else {
+				rc = of_property_read_u32(src_node, "cell-index", &val);
+				CDBG("%s qcom,led flash cell index %d, rc %d\n", __func__,
+				val, rc);
+				if (rc < 0) {
+					pr_err("%s:%d failed %d\n", __func__, __LINE__, rc);
+					goto ERROR;
+				}
+				sensor_info->subdev_id[SUB_MODULE_LED_FLASH] = val;
+				of_node_put(src_node);
+				src_node = NULL;
+			}
+		}
+	}
+#else
 	src_node = of_parse_phandle(of_node, "qcom,led-flash-src", 0);
 	if (!src_node) {
 		CDBG("%s:%d src_node NULL\n", __func__, __LINE__);
@@ -220,7 +267,7 @@ int msm_sensor_get_sub_module_index(struct device_node *of_node,
 		of_node_put(src_node);
 		src_node = NULL;
 	}
-
+#endif
 	rc = of_property_read_u32(of_node, "qcom,strobe-flash-sd-index", &val);
 	if (rc != -EINVAL) {
 		CDBG("%s qcom,strobe-flash-sd-index %d, rc %d\n", __func__,
@@ -866,7 +913,31 @@ int msm_camera_init_gpio_pin_tbl(struct device_node *of_node,
 	} else {
 		rc = 0;
 	}
-
+/*
+  * Added  camera sensor DVDD control
+  *
+  * by ZTE_YCM_20140714 yi.changming 000012
+  */
+	rc = of_property_read_u32(of_node, "qcom,gpio-vdig-other", &val);
+	if (rc != -EINVAL) {
+		if (rc < 0) {
+			pr_err("%s:%d read qcom,gpio-vdig-other failed rc %d\n",
+				__func__, __LINE__, rc);
+			goto ERROR;
+		} else if (val >= gpio_array_size) {
+			pr_err("%s:%d qcom,gpio-vdig invalid %d\n",
+				__func__, __LINE__, val);
+			rc = -EINVAL;
+			goto ERROR;
+		}
+		gconf->gpio_num_info->gpio_num[SENSOR_GPIO_VDIG_OTHER] =
+			gpio_array[val];
+		gconf->gpio_num_info->valid[SENSOR_GPIO_VDIG_OTHER] = 1;
+		CDBG("%s qcom,gpio-vdig-other %d\n", __func__,
+			gconf->gpio_num_info->gpio_num[SENSOR_GPIO_VDIG_OTHER]);
+	} else {
+		rc = 0;
+	}
 	rc = of_property_read_u32(of_node, "qcom,gpio-reset", &val);
 	if (rc != -EINVAL) {
 		if (rc < 0) {
@@ -1222,7 +1293,7 @@ int msm_camera_power_up(struct msm_camera_power_ctrl_t *ctrl,
 	int rc = 0, index = 0, no_gpio = 0, ret = 0;
 	struct msm_sensor_power_setting *power_setting = NULL;
 
-	CDBG("%s:%d\n", __func__, __LINE__);
+	pr_err("%s:%d\n", __func__, __LINE__);
 	if (!ctrl || !sensor_i2c_client) {
 		pr_err("failed ctrl %p sensor_i2c_client %p\n", ctrl,
 			sensor_i2c_client);
