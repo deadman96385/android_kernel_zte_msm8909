@@ -1,0 +1,121 @@
+/*
+ * Copyright (c) 2014-2015, The Linux Foundation. All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 and
+ * only version 2 as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ */
+#include "touch-key-backlight-calbee.dtsi"
+
+
+&soc {
+	i2c@78b5000 { /* BLSP1 QUP1 */
+		bosch@18 { /* Accelerometer sensor */
+			compatible = "bosch,bma2x2";
+			reg = <0x18>;
+			interrupt-parent = <&msm_gpio>;
+			interrupts = <96 0x2002>;
+			vdd-supply = <&pm8909_l17>;
+			vio-supply = <&pm8909_l6>;
+			bosch,init-interval = <200>;
+			bosch,place = <5>;
+			bosch,gpio-int1 = <&msm_gpio 96 0x2002>;
+			bosch,gpio-int2 = <&msm_gpio 65 0x2002>;
+		};
+
+		kxtj2@e {
+			compatible = "kionix,kxtj2-1029";
+			reg = <0x0e>;
+			interrupt-parent = <&msm_gpio>;
+			/*interrupts = <96 0x2>;*/
+			vddhold-supply = <&pm8909_l17>;
+			vdd-supply = <&pm8909_l17>;
+			vio-supply = <&pm8909_l6>;
+			kionix,min_interval = <5>;
+			kionix,poll_interval = <100>;
+			kionix,accel_direction = <5>;
+			kionix,accel_irq_use_drdy = <0>;
+			/*0 is 12BIT,	1 is 8BIT,	2 is 6BIT*/
+			kionix,accel_res = <0>;
+			/*0 is 2g,	1 is 4g,	2 is 6g,	3 is 8g*/
+			kionix,accel_g_range =	<0>;
+		};
+
+		n2dm@8 {
+			compatible = "st,n2dm";
+			reg = <0x08>;
+			interrupt-parent = <&msm_gpio>;
+			/*interrupts = <96 0x2>;*/
+			vddhold-supply = <&pm8909_l17>;
+			vdd-supply = <&pm8909_l17>;
+			vddio-supply = <&pm8909_l6>;
+			n2dm,min_interval = <1>;
+			n2dm,poll_interval = <100>;
+			n2dm,axis-map-x = <1>;
+			n2dm,axis-map-y = <0>;
+			n2dm,axis-map-z = <2>;
+			n2dm,negate-x;
+			n2dm,negate-y;
+			n2dm,negate-z;
+			/*0 is 2g,	16 is 4g,	32 is 8g,	48 is 16g*/
+			n2dm,fs-range = <0>;
+		};
+
+		mcube@4c { /* Accelerometer sensor */
+			compatible = "mcube,mc3xxx";
+			reg = <0x4c>;
+			interrupt-parent = <&msm_gpio>;
+			interrupts = <96 0x2002>;
+			vdd-supply = <&pm8909_l17>;
+			vio-supply = <&pm8909_l6>;
+			mcube,init-interval = <200>;
+			mcube,place = <5>;
+			mcube,use-interrupt = <0>;
+			mcube,gpio-int = <&msm_gpio 96 0x2002>;
+		};
+
+		ltr559@23 {
+			compatible = "liteon,ltr559";
+			reg = <0x23>;
+			pinctrl-names = "lpsensor_default", "lpsensor_sleep";
+			pinctrl-0 = <&lpsensor_default>;
+			pinctrl-1 = <&lpsensor_sleep>;
+			interrupt-parent = <&msm_gpio>;
+			interrupts = <94 0x2002>;
+			vdd-supply = <&pm8909_l17>;
+			vio-supply = <&pm8909_l6>;
+			liteon,irq-gpio = <&msm_gpio 94 0x2002>;
+			liteon,highthr = <1500>;
+			liteon,lowthr = <1200>;
+		};
+
+		akm@c {
+			compatible = "ak,ak09911";
+			reg = <0x0c>;
+			vdd-supply = <&pm8909_l17>;
+			vio-supply = <&pm8909_l6>;
+			akm,layout = <0x2>;
+			akm,auto-report;
+		};
+
+	};
+};
+
+&sdc2_cd_on {
+	/delete-property/  bias-pull-down;
+	bias-disable;
+};
+
+&sdc2_cd_off {
+	/delete-property/  bias-pull-down;
+	bias-disable;
+};
+
+&sdhc_2 {
+	cd-gpios = <&msm_gpio 38 0x1>;
+};

@@ -1,0 +1,191 @@
+/* Copyright (c) 2014-2015, The Linux Foundation. All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 and
+ * only version 2 as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ */
+
+/dts-v1/;
+
+#include "msm8909-qrd-skue.dtsi"
+#include "msm8909-memory.dtsi"
+#include "msm8909-pm8909-zte-helen.dtsi"
+#include "dsi-panel-zte-liansi-hx8394d-hsd-8p0-800p-video.dtsi"
+#include "dsi-panel-zte-boe-jd9366-boe-8p0-800p-video.dtsi"
+#include "dsi-panel-zte-xingyuan-rm68200-auo-8p0-800p-video.dtsi"
+#include "dsi-panel-zte-dijing-nt35521-cmi-5p5-720p-video.dtsi"
+#include "msm8909-camera-sensor-zte-helen.dtsi"
+
+/ {
+	qcom,board-id= <0x1000b 107>;
+};
+
+&dsi_boe_jd9366_boe_8p0_800P_video_vid {
+	qcom,cont-splash-enabled;
+};
+
+&dsi_xingyuan_rm68200_auo_8p0_800P_video_vid {
+	qcom,cont-splash-enabled;
+};
+
+&mdss_dsi0 {
+	qcom,dsi-pref-prim-pan = <&dsi_boe_jd9366_boe_8p0_800P_video_vid &dsi_xingyuan_rm68200_auo_8p0_800P_video_vid>;
+	pinctrl-names = "mdss_default", "mdss_sleep";
+	pinctrl-0 = <&mdss_dsi_active &zte_mdss_dsi_active &mdss_te_active>;
+	pinctrl-1 = <&mdss_dsi_suspend &zte_mdss_dsi_suspend &mdss_te_suspend>;
+
+	qcom,platform-reset-gpio = <&msm_gpio 25 0>;
+};
+&ti2419x_chg {
+	zte,float-voltage-mv = <4352>;
+	zte,iterm-ma = <200>;
+	/*zte,hw-iterm-disabled;*/
+	/*zte,charging-disabled; changed by zte */
+	zte,recharge-thresh-mv = <100>;
+	zte,warm_recharge-thresh-mv = <50>;
+	zte,vbatdet-max-err-mv = <20>;
+	zte,charging-timeout = <12>;
+	zte,input_voltage_mv = <4520>;
+	zte,max_usb_current = <1500>;
+	zte,max_battery_current = <3000>;
+	zte,thermal-mitigation = <1500 1000 900 500 0>;
+	zte,warm_bat_mv = <4100>;
+	zte,cool_bat_mv = <4208>;
+	zte,warm-bat-decidegc = <440>;
+	zte,cool-bat-decidegc = <100>;
+	zte,hot-bat-decidegc = <500>;
+	zte,cold-bat-decidegc = <20>;
+	zte,warm_bat_chg_ma = <512>;
+	zte,cool_bat_chg_ma = <512>;
+	zte,batt-hot-percentage = <20>; /*Only for k81:-5~49*/
+	zte,batt-cold-percentage= <75>; /*Only for k81:-5~49*/
+};
+&lc709203f_fg2 {
+	zte,bat_full_charge_capacity = <2540>; /*depend on the battery cell used*/
+	zte,lc709203f_ite_threshold_high = <990>;
+	zte,lc709203f_ite_threshold_low  = <15>;
+	zte,lc709203f_pack_appli_value   = <61>;/*depend on the PCB,20mohm*/
+};
+
+/ {
+	qrd_batterydata: qcom,battery-data {
+		qcom,rpull-up-kohm = <0>;
+		qcom,vref-batt-therm = <1800000>;
+
+		#include "batterydata-qrd-skut-4v35-2300mah.dtsi"
+	};
+};
+
+&soc {
+	tlmm: pinctrl@1000000 {
+		ztepmx_mdss: ztepmx_mdss {
+			label = "zte-mdss-pins";
+			qcom,pins = <&gp 25>;
+			qcom,num-grp-pins = <1>;
+			qcom,pin-func = <0>;
+
+			zte_mdss_dsi_active: active {
+				drive-strength = <8>; /* 8 mA */
+				bias-disable = <0>; /* no pull */
+				output-high;
+			};
+			zte_mdss_dsi_suspend: suspend {
+				drive-strength = <2>; /* 2 mA */
+				bias-pull-down; /* pull down */
+				output-high;
+			};
+		};
+	};
+	zte_misc {
+		compatible = "zte-misc";
+		/*zte,use-ti-charger-internal-battery-switch;*/
+		hw_ver_id_0 {
+			label = "hw_ver_id_0";
+		};
+		hw_ver_id_1 {
+			label = "hw_ver_id_1";
+		};
+
+		zte_red_led {
+			label = "zte_red_led";
+			gpios = <&msm_gpio 58 0x0>;
+		};
+	};
+	zte-hall {
+		compatible = "zte-hall";
+		pinctrl-names = "zte_hall_gpio_active";
+		pinctrl-0 = <&zte_hall_gpio_active>;
+		hall_en{
+			label = "hall_en";
+			gpios = <&msm_gpio 97 0x0>;
+		};
+	};
+};
+
+&pm8909_chg {
+	status = "ok";
+
+	qcom,vddmax-mv = <4350>;
+	qcom,vddsafe-mv = <4380>;
+	qcom,vinmin-mv = <4308>;
+	qcom,ibatsafe-ma = <900>;/*for p890a12/13 as ibat_max*/
+	qcom,thermal-mitigation = <1440 720 630 0>;
+	qcom,cool-bat-decidegc = <100>;
+	qcom,warm-bat-decidegc = <450>;
+	qcom,cool-bat-mv = <4100>;
+	qcom,warm-bat-mv = <4100>;
+	qcom,ibatmax-warm-ma = <500>;
+	qcom,ibatmax-cool-ma = <500>;
+	qcom,batt-hot-percentage = <35>;  /*0-45 DegC for for p890a12/13*/
+	qcom,batt-cold-percentage = <70>; /*0-45 DegC for for p890a12/13*/
+	qcom,tchg-mins = <232>;
+	qcom,chg-vadc = <&pm8909_vadc>;
+	qcom,chg-adc_tm = <&pm8909_adc_tm>;
+	qcom,bpd-detection = "bpd_thm";
+};
+
+&pm8909_bms {
+	status = "ok";
+	qcom,battery-data = <&qrd_batterydata>;
+
+	qcom,v-cutoff-uv = <3400000>;
+	qcom,max-voltage-uv = <4400000>;
+	qcom,r-conn-mohm = <16>;
+	qcom,shutdown-soc-valid-limit = <100>;
+	qcom,low-soc-calculate-soc-threshold = <15>;
+	qcom,low-voltage-calculate-soc-ms = <1000>;
+	qcom,low-soc-calculate-soc-ms = <5000>;
+	qcom,calculate-soc-ms = <20000>;
+	qcom,volatge-soc-timeout-ms = <60000>;
+	qcom,low-voltage-threshold = <3450000>;
+	qcom,s3-ocv-tolerence-uv = <1200>;
+	qcom,s2-fifo-length = <5>;
+	qcom,low-soc-fifo-length = <2>;
+	qcom,bms-vadc = <&pm8909_vadc>;
+	qcom,bms-adc_tm = <&pm8909_adc_tm>;
+	qcom,pmic-revid = <&pm8909_revid>;
+
+	qcom,force-s3-on-suspend;
+	qcom,force-s2-in-charging;
+	qcom,report-charger-eoc;
+	qcom,resume-soc = <96>;
+};
+
+&pm8909_vib {
+	qcom,vib-vtg-level-mV = <3000>;
+};
+
+&spmi_bus {
+
+	qcom,pm8909@0 {
+		/*spmi_lite is for batt present detect*/
+		spmi_lite {
+			compatible = "zte,spmi-lite";
+		};
+	};
+};

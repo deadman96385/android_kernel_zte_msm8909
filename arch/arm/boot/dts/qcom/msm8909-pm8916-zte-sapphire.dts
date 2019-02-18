@@ -1,0 +1,108 @@
+/*
+ * Copyright (c) 2015, The Linux Foundation. All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 and
+ * only version 2 as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ */
+
+/dts-v1/;
+
+#include "msm8909-pm8916-qrd-skut.dtsi"
+#include "msm8909-pm8916-zte-sapphire.dtsi"
+#include "msm8909-camera-sensor-zte-draco.dtsi"
+/ {
+	qcom,board-id= <0x1000b 110>, <0x1040b 110>;
+};
+
+/ {
+	qrd_batterydata: qcom,battery-data {
+		qcom,rpull-up-kohm = <0>;
+		qcom,vref-batt-therm = <1800000>;
+
+		#include "zte-batterydata-2035mAh.dtsi"
+	};
+};
+
+&pm8916_chg {
+		status = "ok";
+
+		qcom,vddmax-mv = <4350>;
+		qcom,vddsafe-mv = <4380>;
+		qcom,vinmin-mv = <4308>;
+		qcom,ibatsafe-ma = <900>;/*for p890a12/13 as ibat_max*/
+		qcom,thermal-mitigation = <1440 720 630 0>;
+		qcom,cool-bat-decidegc = <100>;
+		qcom,warm-bat-decidegc = <450>;
+		qcom,cool-bat-mv = <4100>;
+		qcom,warm-bat-mv = <4100>;
+		qcom,ibatmax-warm-ma = <500>;
+		qcom,ibatmax-cool-ma = <500>;
+		qcom,batt-hot-percentage = <25>;  /*0-60 DegC Z320*/
+		qcom,batt-cold-percentage = <80>; /*0-60 DegC for Z320*/
+		qcom,tchg-mins = <232>;
+		qcom,chg-vadc = <&pm8916_vadc>;
+		qcom,chg-adc_tm = <&pm8916_adc_tm>;
+	};
+
+&pm8916_bms {
+		status = "ok";
+		qcom,battery-data = <&qrd_batterydata>;
+
+		qcom,v-cutoff-uv = <3400000>;
+		qcom,max-voltage-uv = <4400000>;
+		qcom,r-conn-mohm = <16>;
+		qcom,shutdown-soc-valid-limit = <100>;
+		qcom,low-soc-calculate-soc-threshold = <15>;
+		qcom,low-voltage-calculate-soc-ms = <1000>;
+		qcom,low-soc-calculate-soc-ms = <5000>;
+		qcom,calculate-soc-ms = <20000>;
+		qcom,volatge-soc-timeout-ms = <60000>;
+		qcom,low-voltage-threshold = <3450000>;
+		qcom,s3-ocv-tolerence-uv = <1200>;
+		qcom,s2-fifo-length = <5>;
+		qcom,low-soc-fifo-length = <2>;
+		qcom,bms-vadc = <&pm8916_vadc>;
+		qcom,bms-adc_tm = <&pm8916_adc_tm>;
+		qcom,pmic-revid = <&pm8916_revid>;
+
+		qcom,force-s3-on-suspend;
+		qcom,force-s2-in-charging;
+		qcom,report-charger-eoc;
+		qcom,resume-soc = <96>;
+	};
+
+&soc {
+		zte_misc {
+			compatible = "zte-misc";
+			/*zte,use-ti-charger-internal-battery-switch;*/
+			hw_ver_id_0 {
+				label = "hw_ver_id_0";
+				gpios = <&msm_gpio 51 0>;
+			};
+			hw_ver_id_1 {
+				label = "hw_ver_id_1";
+				gpios = <&msm_gpio 52 0>;
+			};
+		};
+};
+
+&pm8916_vib {
+		qcom,vib-vtg-level-mV = <2700>;
+};
+
+&spmi_bus {
+
+	qcom,pm8916@0 {
+		/*spmi_lite is for batt present detect*/
+		spmi_lite {
+			compatible = "zte,spmi-lite";
+		};
+	};
+};
+

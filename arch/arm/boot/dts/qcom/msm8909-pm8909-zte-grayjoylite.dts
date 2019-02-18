@@ -1,0 +1,254 @@
+/* Copyright (c) 2014-2015, The Linux Foundation. All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 and
+ * only version 2 as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ */
+
+/dts-v1/;
+
+#include "msm8909-qrd-skue.dtsi"
+#include "msm8909-memory.dtsi"
+#include "msm8909-camera-sensor-zte-grayjoylite.dtsi"
+#include "msm8909-pm8909-zte-grayjoylite.dtsi"
+
+#include "dsi_panel_zte_skyworth_ili9806e_cpt_5p0_fwvga_video.dtsi"
+#include "dsi-panel-zte-skyworth-hsd-ili9806e-fwvga-video.dtsi"
+#include "dsi-panel-zte-helitai-hsd-jd9161-fwvga-video.dtsi"
+
+/ {
+	qcom,board-id= <0x1000b 111>, <0x1040b 111>;
+};
+
+&dsi_hlt_jd9161_fwvga_video {
+	qcom,cont-splash-enabled;
+};
+
+&dsi_skyworth_ili9806e_fwvga_video {
+	qcom,cont-splash-enabled;
+};
+
+&dsi_ili9806e_fwvga_video {
+	qcom,cont-splash-enabled;
+};
+
+&mdss_dsi0 {
+	qcom,dsi-pref-prim-pan = <&dsi_ili9806e_fwvga_video>;
+	pinctrl-names = "mdss_default", "mdss_sleep";
+	pinctrl-0 = <&mdss_dsi_active &mdss_te_active>;
+	pinctrl-1 = <&mdss_dsi_suspend &mdss_te_suspend>;
+
+	qcom,platform-reset-gpio = <&msm_gpio 25 0>;
+};
+
+&soc {
+	i2c@78b8000 {
+		ti2419x-chg@6B {
+			compatible = "zte,ti2419x-chg";
+			reg = <0x6B>;
+			interrupt-parent = <&msm_gpio>;
+			interrupts = <110 2>;
+			pinctrl-names = "default";
+			pinctrl-0 = <&smb_int_default>;
+			regulator-name = "smb1360_otg_vreg";
+
+			zte,float-voltage-mv = <4400>;
+			zte,iterm-ma = <128>;
+			/*zte,hw-iterm-disabled;*/
+			/*zte,charging-disabled; changed by zte */
+			zte,recharge-thresh-mv = <100>;
+			zte,warm_recharge-thresh-mv = <50>;
+			zte,vbatdet-max-err-mv = <20>;
+			zte,charging-timeout = <12>;
+			zte,input_voltage_mv = <4520>;
+			zte,max_usb_current = <1500>;
+			zte,max_battery_current = <2100>;
+			zte,thermal-mitigation = <1500 1000 900 500 0>;
+			zte,warm_bat_mv = <4000>;
+			zte,cool_bat_mv = <4000>;
+			zte,warm-bat-decidegc = <440>;
+			zte,cool-bat-decidegc = <100>;
+			zte,hot-bat-decidegc = <500>;
+			zte,cold-bat-decidegc = <20>;
+			zte,warm_bat_chg_ma = <512>;
+			zte,cool_bat_chg_ma = <512>;
+			qcom,tichg-vadc = <&pm8909_vadc>;
+			zte,batt-hot-percentage = <25>; /*for battery therm correcting*/
+			zte,batt-cold-percentage= <80>; /*for battery therm correcting*/
+		};
+	};
+};
+
+
+/ {
+	qrd_batterydata: qcom,battery-data {
+		qcom,rpull-up-kohm = <100000>;
+		qcom,vref-batt-therm = <1800000>;
+
+		#include "zte-batterydata-2250mAh.dtsi"
+	};
+};
+
+/ {
+	qrd_batterydata_byd: qcom,battery-data-one {
+		qcom,rpull-up-kohm = <100000>;
+		qcom,vref-batt-therm = <1800000>;
+
+		#include "zte-batterydata-2250mAh-bike.dtsi"
+	};
+};
+
+&soc {
+	zte_misc {
+		compatible = "zte-misc";
+		/*zte,use-ti-charger-internal-battery-switch;*/
+		hw_ver_id_0 {
+			label = "hw_ver_id_0";
+		};
+		hw_ver_id_1 {
+			label = "hw_ver_id_1";
+		};
+	};
+
+	gpio-leds {
+		compatible = "gpio-leds";
+		keypad-backlight {
+			gpios = <&msm_gpio 97 0>;
+			label = "button-backlight";
+			linux,default-trigger = "none";
+		};
+	};
+};
+
+&pm8909_chg {
+	status = "ok";
+
+	qcom,vddmax-mv = <4350>;
+	qcom,vddsafe-mv = <4380>;
+	qcom,vinmin-mv = <4308>;
+	qcom,ibatsafe-ma = <1000>;/*for p890a12/13 as ibat_max*/
+	qcom,thermal-mitigation = <1440 720 630 0>;
+	qcom,cool-bat-decidegc = <100>;
+	qcom,warm-bat-decidegc = <450>;
+	qcom,cool-bat-mv = <4100>;
+	qcom,warm-bat-mv = <4100>;
+	qcom,ibatmax-warm-ma = <500>;
+	qcom,ibatmax-cool-ma = <500>;
+	qcom,batt-hot-percentage = <25>;  /*0-60 DegC*/
+	qcom,batt-cold-percentage = <80>; /*0-60 DegC*/
+	qcom,tchg-mins = <232>;
+	qcom,chg-vadc = <&pm8909_vadc>;
+	qcom,chg-adc_tm = <&pm8909_adc_tm>;
+	qcom,bpd-detection = "bpd_thm";
+};
+
+&pm8909_bms {
+	status = "ok";
+	qcom,battery-data = <&qrd_batterydata>;
+
+	qcom,v-cutoff-uv = <3400000>;
+	qcom,max-voltage-uv = <4400000>;
+	qcom,r-conn-mohm = <16>;
+	qcom,shutdown-soc-valid-limit = <100>;
+	qcom,low-soc-calculate-soc-threshold = <15>;
+	qcom,low-voltage-calculate-soc-ms = <1000>;
+	qcom,low-soc-calculate-soc-ms = <5000>;
+	qcom,calculate-soc-ms = <20000>;
+	qcom,volatge-soc-timeout-ms = <60000>;
+	qcom,low-voltage-threshold = <3450000>;
+	qcom,s3-ocv-tolerence-uv = <1200>;
+	qcom,s2-fifo-length = <5>;
+	qcom,low-soc-fifo-length = <2>;
+	qcom,bms-vadc = <&pm8909_vadc>;
+	qcom,bms-adc_tm = <&pm8909_adc_tm>;
+	qcom,pmic-revid = <&pm8909_revid>;
+
+	qcom,force-s3-on-suspend;
+	qcom,force-s2-in-charging;
+	qcom,report-charger-eoc;
+	qcom,resume-soc = <97>;
+	qcom,use-reported-soc;
+	qcom,use-poweroff-soc;
+};
+
+&pm8909_vib {
+	qcom,vib-vtg-level-mV = <3000>;
+};
+
+&spmi_bus {
+	qcom,pm8909@0 {
+		/*spmi_lite is for batt present detect*/
+		spmi_lite {
+			compatible = "zte,spmi-lite";
+		};
+	};
+
+	qcom,pm8909@0 {
+		qcom,leds@a100 {
+			status = "okay";
+			qcom,led_mpp_2 {	/* red led */
+				label = "mpp";
+				linux,name = "red";
+				linux,default-trigger = "battery-charging";
+				qcom,default-state = "off";
+				qcom,max-current = <40>;
+				qcom,current-setting = <5>;
+				qcom,id = <6>;
+				qcom,source-sel = <8>;
+				qcom,mode-ctrl = <0x60>;
+				qcom,pwm-channel = <0>;
+				qcom,pwm-us = <1000>;
+				qcom,vin-ctrl = <0x00>;
+				qcom,duty-pcts = <50>;
+				qcom,mode = "pwm";
+				qcom,use-blink;
+				pwms = <&pm8909_pwm 0 0>;
+				qcom,pwm-names = "red-led";
+			};
+		};
+
+		qcom,leds@a300 {
+			status = "okay";
+			qcom,led_mpp_4 {	/* green led */
+				label = "mpp";
+				linux,name = "green";		/* orgin is wled-backlight */
+				linux,default-trigger = "battery-full";	/* org="bkl-trigger"; */
+				qcom,default-state = "off";
+				qcom,max-current = <40>;
+				qcom,current-setting = <5>;	/* zte add */
+				qcom,id = <6>;				/* in leds-qpnp.c enum QPNP_ID_LED_MPP(6) */
+				qcom,source-sel = <8>;		/* select power source, default 1 (enabled)(org=8) */
+				qcom,mode-ctrl = <0x60>;	/* operation mode, default 0x60 = Mode Sink (org=0x10)*/
+				qcom,pwm-channel = <0>;
+				qcom,pwm-us = <1000>;
+				qcom,vin-ctrl = <0x00>;		/* select input source, 0 to 3 */
+				qcom,duty-pcts = <50>;
+				qcom,mode = "pwm";
+				qcom,use-blink;
+				pwms = <&pm8909_pwm 0 0>;
+				qcom,pwm-names = "green-led";
+			};
+		};
+	};
+};
+&max17055 {
+	maxim,config-data = /bits/ 16 <
+		0x0000 0x0000 0x0000 0x03D7 0x0000		/* A/D measurement */
+		0x0FCE 0xE196 0x0000 0x0000 0x2214 0x00d8 0xe000	/* Alert / Status */
+		0x0000 0x0000 0x198c 0x01a8 0x0000 0xaa64 0x8400	/* App data */
+		0x0000 0x440A 0x0000 0x0000 0x0000 0x860b 0x0000		/* Configs */
+		0x0057 0x223e 0x6900 0x2e00 0x1004 0x0885		/* Cell Data */
+		0x0000 0x0000 0x0000 0x0000
+		0x7d00 0xaad0 0xb7b0 0xb9a0 0xbc50 0xbda0 0xbe80 0xbfb0		/* Model Data Begin*/
+		0xc210 0xc360 0xc690 0xc9b0 0xcc50 0xceb0 0xd530 0xdb40
+		0x0020 0x0180 0x1730 0x0d00 0x19e0 0x13c0 0x12f0 0x0f80
+		0x0a50 0x08f0 0x06f0 0x07f0 0x0890 0x06e0 0x05f0 0x05f0
+		0x0100 0x0100 0x0100 0x0100 0x0100 0x0100 0x0100 0x0100
+		0x0100 0x0100 0x0100 0x0100 0x0100 0x0100 0x0100 0x0100		/* Model Data End*/
+	>;
+};

@@ -1,0 +1,236 @@
+/*
+ * Copyright (c) 2014-2015, The Linux Foundation. All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 and
+ * only version 2 as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ */
+
+#include "msm-pm8909-rpm-regulator.dtsi"
+#include "msm-pm8909.dtsi"
+#include "msm8909-regulator.dtsi"
+#include "msm8909-pinctrl.dtsi"
+
+/ {
+	qcom,pmic-id = <0x1000D 0x0 0x0 0x0>;
+};
+
+&pm8909_vadc {
+	chan@0 {
+		label = "usb_in";
+		reg = <0>;
+		qcom,decimation = <0>;
+		qcom,pre-div-channel-scaling = <7>;
+		qcom,calibration-type = "absolute";
+		qcom,scale-function = <0>;
+		qcom,hw-settle-time = <0>;
+		qcom,fast-avg-setup = <0>;
+	};
+
+	chan@2 {
+		label = "ireg_fb";
+		reg = <2>;
+		qcom,decimation = <0>;
+		qcom,pre-div-channel-scaling = <6>;
+		qcom,calibration-type = "absolute";
+		qcom,scale-function = <0>;
+		qcom,hw-settle-time = <0>;
+		qcom,fast-avg-setup = <0>;
+	};
+
+	chan@5 {
+		label = "vcoin";
+		reg = <5>;
+		qcom,decimation = <0>;
+		qcom,pre-div-channel-scaling = <1>;
+		qcom,calibration-type = "absolute";
+		qcom,scale-function = <0>;
+		qcom,hw-settle-time = <0>;
+		qcom,fast-avg-setup = <0>;
+	};
+
+	chan@6 {
+		label = "vbat_sns";
+		reg = <6>;
+		qcom,decimation = <0>;
+		qcom,pre-div-channel-scaling = <1>;
+		qcom,calibration-type = "absolute";
+		qcom,scale-function = <0>;
+		qcom,hw-settle-time = <0>;
+		qcom,fast-avg-setup = <0>;
+	};
+
+	chan@7 {
+		label = "vph_pwr";
+		reg = <7>;
+		qcom,decimation = <0>;
+		qcom,pre-div-channel-scaling = <1>;
+		qcom,calibration-type = "absolute";
+		qcom,scale-function = <0>;
+		qcom,hw-settle-time = <0>;
+		qcom,fast-avg-setup = <0>;
+	};
+
+	chan@b {
+		label = "chg_temp";
+		reg = <0xb>;
+		qcom,decimation = <0>;
+		qcom,pre-div-channel-scaling = <0>;
+		qcom,calibration-type = "absolute";
+		qcom,scale-function = <3>;
+		qcom,hw-settle-time = <0>;
+		qcom,fast-avg-setup = <0>;
+	};
+
+	chan@30 {
+		label = "batt_therm";
+		reg = <0x30>;
+		qcom,decimation = <0>;
+		qcom,pre-div-channel-scaling = <0>;
+		qcom,calibration-type = "ratiometric";
+		qcom,scale-function = <1>;
+		qcom,hw-settle-time = <2>;
+		qcom,fast-avg-setup = <0>;
+	};
+
+	chan@31 {
+		label = "batt_id";
+		reg = <0x31>;
+		qcom,decimation = <0>;
+		qcom,pre-div-channel-scaling = <0>;
+		qcom,calibration-type = "ratiometric";
+		qcom,scale-function = <0>;
+		qcom,hw-settle-time = <2>;
+		qcom,fast-avg-setup = <0>;
+	};
+
+	chan@36 {
+		label = "pa_therm0";
+		reg = <0x36>;
+		qcom,decimation = <0>;
+		qcom,pre-div-channel-scaling = <0>;
+		qcom,calibration-type = "ratiometric";
+		qcom,scale-function = <2>;
+		qcom,hw-settle-time = <2>;
+		qcom,fast-avg-setup = <0>;
+		qcom,vadc-thermal-node;
+	};
+
+	chan@32 {
+		label = "xo_therm";
+		reg = <0x32>;
+		qcom,decimation = <0>;
+		qcom,pre-div-channel-scaling = <0>;
+		qcom,calibration-type = "ratiometric";
+		qcom,scale-function = <4>;
+		qcom,hw-settle-time = <2>;
+		qcom,fast-avg-setup = <0>;
+		qcom,vadc-thermal-node;
+	};
+
+	chan@3c {
+		label = "xo_therm_buf";
+		reg = <0x3c>;
+		qcom,decimation = <0>;
+		qcom,pre-div-channel-scaling = <0>;
+		qcom,calibration-type = "ratiometric";
+		qcom,scale-function = <4>;
+		qcom,hw-settle-time = <2>;
+		qcom,fast-avg-setup = <0>;
+		qcom,vadc-thermal-node;
+	};
+};
+
+&pm8909_adc_tm {
+	/* Channel Node */
+	chan@30 {
+		label = "batt_therm";
+		reg = <0x30>;
+		qcom,decimation = <0>;
+		qcom,pre-div-channel-scaling = <0>;
+		qcom,calibration-type = "ratiometric";
+		qcom,scale-function = <1>;
+		qcom,hw-settle-time = <2>;
+		qcom,fast-avg-setup = <3>;
+		qcom,btm-channel-number = <0x48>;
+	};
+
+	chan@6 {
+		label = "vbat_sns";
+		reg = <0x6>;
+		qcom,decimation = <0>;
+		qcom,pre-div-channel-scaling = <1>;
+		qcom,calibration-type = "absolute";
+		qcom,scale-function = <0>;
+		qcom,hw-settle-time = <0>;
+		qcom,fast-avg-setup = <3>;
+		qcom,btm-channel-number = <0x68>;
+	};
+};
+
+&tlmm_pinmux {
+	max17055_alert {
+		qcom,pins = <&gp 65>;
+		qcom,num-grp-pins = <1>;
+		qcom,pin-func = <0>;
+		label = "max17055_int_gpio";
+		max17055_alert_default: max17055_alert_default {
+			drive-strength = <2>;	/* 2 MA */
+			bias-pull-up;		/* PULL UP*/
+		};
+	};
+};
+&i2c_4 {
+	max17055:max17055@36 {
+		status = "okay";
+		compatible = "maxim,max17055";
+		reg = <0x36>;
+
+		interrupt-parent = <&msm_gpio>;
+		interrupts = <65 2>;			/* gpio65 */
+		pinctrl-names = "default";
+		pinctrl-0 = <&max17055_alert_default>;
+		maxim,rsns-microohm = <10000>;	/*Current sense resistance in micro Ohm*/
+		maxim,config-type = <1>;		/*EZ:1 SHORT: 2 FULL: 3*/
+		maxim,cold-temp = <(-450)>;		/*Temp is scaled by 10 to reserve more precise*/
+		maxim,over-heat-temp = <1000>;	/*Temp is scaled by 10 to reserve more precise*/
+		maxim,dead-volt = <3000>;		/*Dead voltage in millivolts*/
+		maxim,over-volt = <4500>;		/*Over voltage in millivolts*/
+		maxim,enable-por-init;			/*Comment out this line to ignore the configuration data*/
+		qcom,max17055-vadc = <&pm8909_vadc>;
+		maxim,config-data = /bits/ 16 <
+		0x0000 0x0000 0x0000 0x03D7 0x0000		/* A/D measurement */
+		0x0FCE 0xE196 0x0000 0x0000 0x2214 0x00d8 0xe000	/* Alert / Status */
+		0x0000 0x0000 0x19ed 0x01a8 0x0000 0xaa64 0x8400	/* App data */
+		0x0000 0x4412 0x0000 0x0000 0x0000 0x860b 0x0000		/* Configs */
+		0x0052 0x223e 0x1050 0x6044 0x1300 0x0c00		/* Cell Data */
+		0x0000 0x0000 0x0000 0x0000
+		0x7d00 0xaad0 0xb7b0 0xb9a0 0xbc50 0xbda0 0xbe80 0xbfb0		/* Model Data Begin*/
+		0xc210 0xc360 0xc690 0xc9b0 0xcc50 0xceb0 0xd530 0xdb40
+		0x0020 0x0180 0x1730 0x0d00 0x19e0 0x13c0 0x12f0 0x0f80
+		0x0a50 0x08f0 0x06f0 0x07f0 0x0890 0x06e0 0x05f0 0x05f0
+		0x0100 0x0100 0x0100 0x0100 0x0100 0x0100 0x0100 0x0100
+		0x0100 0x0100 0x0100 0x0100 0x0100 0x0100 0x0100 0x0100		/* Model Data End*/
+		>;
+		maxim,config-data-gy = /bits/ 16 <
+		0x0000 0x0000 0x0000 0x03D7 0x0000		/* A/D measurement */
+		0x0FCE 0xE196 0x0000 0x0000 0x2214 0x00d8 0xe000	/* Alert / Status */
+		0x0000 0x0000 0x19ed 0x01a8 0x0000 0xaa64 0x8400	/* App data */
+		0x0000 0x4412 0x0000 0x0000 0x0000 0x860b 0x0000		/* Configs */
+		0x0052 0x223e 0x1050 0x6044 0x1300 0x0c00		/* Cell Data */
+		0x0000 0x0000 0x0000 0x0000
+		0x7d00 0xaad0 0xb7b0 0xb9a0 0xbc50 0xbda0 0xbe80 0xbfb0		/* Model Data Begin*/
+		0xc210 0xc360 0xc690 0xc9b0 0xcc50 0xceb0 0xd530 0xdb40
+		0x0020 0x0180 0x1730 0x0d00 0x19e0 0x13c0 0x12f0 0x0f80
+		0x0a50 0x08f0 0x06f0 0x07f0 0x0890 0x06e0 0x05f0 0x05f0
+		0x0100 0x0100 0x0100 0x0100 0x0100 0x0100 0x0100 0x0100
+		0x0100 0x0100 0x0100 0x0100 0x0100 0x0100 0x0100 0x0100		/* Model Data End*/
+		>;
+	};
+};
+#include "msm8909-pm8909-pm.dtsi"
