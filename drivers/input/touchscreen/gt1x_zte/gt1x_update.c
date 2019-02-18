@@ -139,6 +139,8 @@ struct fw_update_info update_info = {
 	.force_update = 0
 };
 
+static int force_update_flag = 0;
+
 int gt1x_update_prepare(char *filename);
 int gt1x_check_firmware(void);
 u8 *gt1x_get_fw_data(u32 offset, int length);
@@ -243,6 +245,17 @@ void gt1x_enter_update_mode(void)
 	gt1x_irq_disable();
 }
 
+/* added for force firmware update */
+int gt1x_update_setforce(int flag)
+{
+	GTP_INFO("Set force update flag is %d.", flag);
+	if (flag)
+		force_update_flag = 1;
+	else
+		force_update_flag = 0;
+	return 0;
+}
+
 int gt1x_update_firmware(void *filename)
 {
 	int i = 0;
@@ -279,10 +292,13 @@ int gt1x_update_firmware(void *filename)
 #endif
 	update_info.progress++;
 
-	ret = gt1x_update_judge();
-	if (ret) {
-		update_info.status = UPDATE_STATUS_ABORT;
-		goto gt1x_update_exit;
+	/* added for force firmware update */
+	if (!force_update_flag) {
+		ret = gt1x_update_judge();
+		if (ret) {
+			update_info.status = UPDATE_STATUS_ABORT;
+			goto gt1x_update_exit;
+		}
 	}
 	update_info.progress++;
 

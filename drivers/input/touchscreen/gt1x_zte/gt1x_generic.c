@@ -1131,7 +1131,7 @@ s32 gt1x_touch_event_handler(u8 *data, struct input_dev *dev, struct input_dev *
 
 		if (check_sum) {
 			GTP_ERROR("Checksum error[%x]", check_sum);
-			return ERROR_VALUE;
+			/*return ERROR_VALUE;*/
 		}
 	}
 /*
@@ -2409,6 +2409,13 @@ s32 gt1x_init(void)
 		else if (reg_val[0] != 0xBE) {
 			GTP_ERROR("Check main system not pass[0x%2X].", reg_val[0]);
 			gt1x_init_failed = 1;
+		}
+		/* added for force firmware update */
+		if (gt1x_init_failed == 1) {
+			gt1x_update_setforce(1);
+			gt1x_update_firmware(NULL);
+			gt1x_update_setforce(0);
+			continue;
 		}
 
 #if !GTP_AUTO_UPDATE
