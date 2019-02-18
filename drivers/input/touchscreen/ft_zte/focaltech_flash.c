@@ -125,16 +125,16 @@ static unsigned char CTPM_FW_HLT[] = {
 
 static unsigned char CTPM_FW_LCE[] = {
 };
-#elif defined(CONFIG_BOARD_SAPPHIRE)
+#elif defined(CONFIG_BOARD_SAPPHIRE) || defined(CONFIG_BOARD_SAPPHIRE4G)
 static unsigned char CTPM_FW_DEFAULT[] = {
 };
 
 static unsigned char CTPM_FW_HLT[] = {
-#include "ZTE_N818S_HLT_FT6336U_V14_20170602_app.i"
+#include "ZTE_Z3001S_HLT_FT6336U_Ver0x1b_20171225_app.i"
 };
 
 static unsigned char CTPM_FW_LCE[] = {
-#include "ZTE_N818S_LCE_FT6336U_V12_20170602_app.i"
+#include "ZTE_Z3001S_LCE_FT6336U_Ver0x16_20171225_app.i"
 };
 #elif defined(CONFIG_BOARD_HELEN)
 static unsigned char CTPM_FW_DEFAULT[] = {
@@ -146,7 +146,17 @@ static unsigned char CTPM_FW_HLT[] = {
 
 static unsigned char CTPM_FW_LCE[] = {
 };
+#else
+static unsigned char CTPM_FW_DEFAULT[] = {
+};
+
+static unsigned char CTPM_FW_HLT[] = {
+};
+
+static unsigned char CTPM_FW_LCE[] = {
+};
 #endif
+
 static unsigned char aucFW_PRAM_BOOT[] = {
 #include "FT8606_Pramboot_V0.6_20150304.i"
 };
@@ -473,6 +483,10 @@ void fts_get_upgrade_array(void)
 
 #if (defined(CONFIG_BOARD_LAVENDER) || defined(CONFIG_BOARD_BAFFIN))
 	chip_id = 0x54;
+#elif (defined(CONFIG_BOARD_HELEN) || defined(CONFIG_BOARD_ELDEN))
+	chip_id = 0x54;
+#elif (defined(CONFIG_BOARD_SAPPHIRE) || defined(CONFIG_BOARD_SAPPHIRE4G))
+	chip_id = 0x64;
 #endif
 
 	for (i = 0; i < sizeof(fts_updateinfo) / sizeof(struct fts_Upgrade_Info); i++) {
@@ -2852,8 +2866,8 @@ int fts_6x36gu_ctpm_fw_upgrade_ReadVendorID(struct i2c_client *client, u8 *ucVen
 		auc_i2c_write_buf[1] = auc_i2c_write_buf[2] = auc_i2c_write_buf[3] = 0x00;
 		reg_val[0] = reg_val[1] = 0x00;
 		fts_i2c_read(client, auc_i2c_write_buf, 4, reg_val, 2);
-		if (reg_val[0] == fts_updateinfo_curr.upgrade_id_1 &&
-		    reg_val[1] == fts_updateinfo_curr.upgrade_id_2) {
+		if (reg_val[0] == fts_updateinfo_curr.upgrade_id_1
+			&& reg_val[1] == fts_updateinfo_curr.upgrade_id_2) {
 			FTS_DBG("[FTS] Step 3: READ OK CTPM ID,ID1 = 0x%x,ID2 = 0x%x\n", reg_val[0], reg_val[1]);
 			break;
 		}
@@ -2874,7 +2888,7 @@ int fts_6x36gu_ctpm_fw_upgrade_ReadVendorID(struct i2c_client *client, u8 *ucVen
 		usleep_range(5000, 5500);
 		reg_val[0] = reg_val[1] = 0x00;
 		i_ret = fts_i2c_read(client, auc_i2c_write_buf, 0, reg_val, 2);
-		if (reg_val[0] != 0) {
+		if (i_ret < 0) {
 			*ucVendorID = 0;
 			FTS_DBG("In upgrade Vendor ID Mismatch, REG1 = 0x%x, REG2 = 0x%x, Definition:0x%x, i_ret=%d\n",
 				reg_val[0], reg_val[1], 0, i_ret);
@@ -2901,7 +2915,6 @@ int fts_6x36gu_ctpm_fw_upgrade_ReadVendorID(struct i2c_client *client, u8 *ucVen
 int fts_6x36gu_ctpm_fw_upgrade_in_bootloader(struct i2c_client *client)
 {
 	u8 ucVendorID = 0;
-	int fw_len = 0;
 	u8 *pbt_buf = NULL;
 	int i_ret = 0;
 
@@ -2909,17 +2922,12 @@ int fts_6x36gu_ctpm_fw_upgrade_in_bootloader(struct i2c_client *client)
 
 	if (ucVendorID == 0x82) {
 		CTPM_FW = CTPM_FW_HLT;
+		FW_LEN = sizeof(CTPM_FW_LCE);
 	} else if (ucVendorID == 0x87) {
 		CTPM_FW = CTPM_FW_LCE;
+		FW_LEN = sizeof(CTPM_FW_LCE);
 	} else {
 		pr_err("[FTS] the vendor id is wrong!.\n");
-		return -EIO;
-	}
-
-	fw_len = FW_LEN;
-
-	if (fw_len < 8 || fw_len > 64 * 1024)	{
-		dev_err(&client->dev, "%s:FW length error\n", __func__);
 		return -EIO;
 	}
 
@@ -2977,8 +2985,11 @@ int fts_ctpm_auto_upgrade_select(struct i2c_client *client)
 		return 0;
 	}
 
-#if defined(CONFIG_BOARD_SAPPHIRE)
+#if (defined(CONFIG_BOARD_SAPPHIRE) || defined(CONFIG_BOARD_SAPPHIRE4G))
 	fts_6x36gu_ctpm_fw_upgrade_in_bootloader(client);
+#elif (defined(CONFIG_BOARD_HELEN) || defined(CONFIG_BOARD_ELDEN))
+	fts_5x46_ctpm_fw_upgrade(client, CTPM_FW_DEFAULT,
+									sizeof(CTPM_FW_DEFAULT));
 #else
 	pr_info("fts in bootloader mode, unconfig bootloader function\n");
 #endif

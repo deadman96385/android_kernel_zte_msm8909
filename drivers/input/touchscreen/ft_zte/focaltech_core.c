@@ -164,6 +164,7 @@ int ftc_update_flag = 0;
 struct i2c_client *fts_i2c_client;
 struct fts_ts_data *fts_wq_data;
 struct input_dev *fts_input_dev;
+struct mutex power_mutex;
 
 static struct device *dev;
 static struct workqueue_struct *fts_ts_resume_wq;
@@ -367,10 +368,15 @@ static int fts_psensor_enable_set(struct sensors_classdev *sensors_cdev,
 	struct fts_ts_data *data = psensor_pdata->data;
 	struct input_dev *input_dev = data->psensor_pdata->input_psensor_dev;
 
+	pr_info("%s:%d+++++++++ enable %d\n", __func__, __LINE__, enable);
+	mutex_lock(&power_mutex);
+
 #ifdef CONFIG_TOUCHSCREEN_FTS_PSENSOR
 	if (data->suspended == true) {
 		pr_info("%s:tp is suspended,can not enable psensor\n", __func__);
 		psensor_pdata->tp_psensor_enable = true;
+		mutex_unlock(&power_mutex);
+		pr_info("%s:%d--------\n", __func__, __LINE__);
 		return enable;
 	}
 #endif
@@ -382,6 +388,10 @@ static int fts_psensor_enable_set(struct sensors_classdev *sensors_cdev,
 	else
 		psensor_pdata->tp_psensor_opened = 0;
 	mutex_unlock(&input_dev->mutex);
+
+	mutex_unlock(&power_mutex);
+	pr_info("%s:%d--------\n", __func__, __LINE__);
+
 	return enable;
 }
 
@@ -523,6 +533,7 @@ static void fts_report_value(struct fts_ts_data *data)
 	int uppoint = 0;
 	int touchs = 0;
 	u8 pointid = FTS_MAX_ID;
+	static unsigned int touch_num = 0;
 
 	u8 buf[POINT_READ_BUF] = { 0 };
 
@@ -576,6 +587,9 @@ static void fts_report_value(struct fts_ts_data *data)
 		}
 	}
 
+	if ((touchs != 0) && (touch_num == 0))
+		pr_info("%s:touch down.\n", __func__);
+
 	if (unlikely(data->touchs ^ touchs)) {
 		for (i = 0; i < FTS_MAX_POINTS; i++) {
 			if (BIT(i) & (data->touchs ^ touchs)) {
@@ -585,8 +599,11 @@ static void fts_report_value(struct fts_ts_data *data)
 		}
 	}
 	data->touchs = touchs;
+	touch_num = touchs;
 	if (event->touch_point == uppoint) {
 		input_report_key(data->input_dev, BTN_TOUCH, 0);
+		pr_info("%s:touch up.\n", __func__);
+		touch_num = 0;
 	} else {
 		input_report_key(data->input_dev, BTN_TOUCH, event->touch_point > 0);
 	}
@@ -934,7 +951,7 @@ static int fts_ts_start(struct device *dev)
 	msleep(data->pdata->hard_rst_dly);
 	gpio_direction_output(data->pdata->reset_gpio, 1);
 	msleep(data->pdata->soft_rst_dly);
-	pr_info("fts exit sleep mode!!!\n");
+	pr_info("fts enter wakeup mode!!!\n");
 #endif
 
 	enable_irq(data->client->irq);
@@ -1071,9 +1088,10 @@ pwr_off_fail:
 int fts_ts_suspend(struct device *dev)
 {
 	struct fts_ts_data *data = dev_get_drvdata(dev);
-#ifdef CONFIG_TOUCHSCREEN_FTS_PSENSOR
 	int err;
-#endif
+
+	pr_info("%s:%d++++++\n", __func__, __LINE__);
+	mutex_lock(&power_mutex);
 
 #if FTS_GESTRUE_EN
 	fts_write_reg(fts_i2c_client, 0xd0, 0x01);
@@ -1090,15 +1108,20 @@ int fts_ts_suspend(struct device *dev)
 
 	data->suspended = true;
 
+	mutex_unlock(&power_mutex);
 	return 0;
 #endif
 	if (data->loading_fw) {
-		dev_info(dev, "Firmware loading in process...\n");
+		pr_info("Firmware loading in process...\n");
+		pr_info("%s:%d--------\n", __func__, __LINE__);
+		mutex_unlock(&power_mutex);
 		return 0;
 	}
 
 	if (data->suspended) {
-		dev_info(dev, "Already in suspend state\n");
+		pr_info("Already in suspend state\n");
+		pr_info("%s:%d--------\n", __func__, __LINE__);
+		mutex_unlock(&power_mutex);
 		return 0;
 	}
 
@@ -1111,11 +1134,18 @@ int fts_ts_suspend(struct device *dev)
 			dev_err(&data->client->dev,
 				"%s: set_irq_wake failed\n", __func__);
 		data->suspended = true;
+		mutex_unlock(&power_mutex);
+		pr_info("%s:%d--------\n", __func__, __LINE__);
 		return err;
 	}
 #endif
 
-	return fts_ts_stop(dev);
+	err = fts_ts_stop(dev);
+
+	mutex_unlock(&power_mutex);
+	pr_info("%s:%d--------\n", __func__, __LINE__);
+
+	return err;
 }
 
 /*******************************************************************************
@@ -1130,9 +1160,13 @@ static void fts_ts_resume(struct work_struct *work)
 	struct fts_ts_data *data = dev_get_drvdata(dev);
 	int err;
 
+	pr_info("%s:%d+++++++\n", __func__, __LINE__);
+	mutex_lock(&power_mutex);
+
 	if (!data->suspended) {
-		dev_dbg(dev, "Already in awake state\n");
-		pr_info("pzh:Already in awake state\n");
+		mutex_unlock(&power_mutex);
+		pr_info("Already in resume state\n");
+		pr_info("%s:%d--------\n", __func__, __LINE__);
 		return;
 	}
 
@@ -1146,19 +1180,29 @@ static void fts_ts_resume(struct work_struct *work)
 				"%s: disable_irq_wake failed\n",
 				__func__);
 		data->suspended = false;
+		pr_info("%s:%d--------\n", __func__, __LINE__);
+		mutex_unlock(&power_mutex);
 		return;
 	}
 #endif
 
 	err = fts_ts_start(dev);
-	if (err < 0)
+	if (err < 0) {
+		mutex_unlock(&power_mutex);
+		pr_info("%s:%d--------\n", __func__, __LINE__);
 		return;
+	}
+
+	mutex_unlock(&power_mutex);
+
+	pr_info("%s:%d--------\n", __func__, __LINE__);
 #ifdef CONFIG_TOUCHSCREEN_FTS_PSENSOR
 	if (data->psensor_pdata->tp_psensor_enable == true) {
 		data->psensor_pdata->ps_cdev.sensors_enable(&data->psensor_pdata->ps_cdev, true);
 		data->psensor_pdata->tp_psensor_enable = false;
 	}
 #endif
+
 }
 
 static const struct dev_pm_ops fts_ts_pm_ops = {
@@ -2021,6 +2065,8 @@ static int fts_ts_probe(struct i2c_client *client, const struct i2c_device_id *i
 			goto pwr_deinit;
 		}
 	}
+
+	mutex_init(&power_mutex);
 
 	err = fts_ts_pinctrl_init(data);
 	if (!err && data->ts_pinctrl) {
