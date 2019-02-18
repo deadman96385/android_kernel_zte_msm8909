@@ -29,15 +29,22 @@ int msm_camera_fill_vreg_params(struct camera_vreg_t *cam_vreg,
 	uint16_t i = 0;
 	int      j = 0;
 
-	/* Validate input parameters */
-	if (!cam_vreg || !power_setting) {
-		pr_err("%s:%d failed: cam_vreg %p power_setting %p", __func__,
-			__LINE__,  cam_vreg, power_setting);
+	/* Validate power_setting input parameters */
+	if (!power_setting) {
+		pr_err("%s:%d failed:  power_setting %p", __func__,
+			__LINE__,  power_setting);
 		return -EINVAL;
+	}
+	/*check vreg input parameters*/
+	if (!cam_vreg) {
+		num_vreg = 0;
+		CDBG("%s:%d empty vreg cam_vreg %p,warning,check power supply!!! ", __func__,
+			__LINE__,  cam_vreg);
+		return 0;
 	}
 
 	/* Validate size of num_vreg */
-	if (num_vreg <= 0) {
+	if (num_vreg < 0) {
 		pr_err("failed: num_vreg %d", num_vreg);
 		return -EINVAL;
 	}
@@ -133,9 +140,6 @@ int msm_sensor_get_sub_module_index(struct device_node *of_node,
 	uint32_t *val_array = NULL;
 	struct device_node *src_node = NULL;
 	struct msm_sensor_info_t *sensor_info;
-#ifdef CONFIG_BOARD_ELDEN
-	int hw_ver;
-#endif
 
 	sensor_info = kzalloc(sizeof(*sensor_info), GFP_KERNEL);
 	if (!sensor_info) {
@@ -207,51 +211,7 @@ int msm_sensor_get_sub_module_index(struct device_node *of_node,
 	} else {
 		rc = 0;
 	}
-#ifdef CONFIG_BOARD_ELDEN
-	if (of_get_property(of_node, "qcom,led-flash-src", &count)) {
-		count /= sizeof(uint32_t);
-		CDBG("led flash src count is %d\n", count);
-		if (count > MAX_LED_TRIGGERS || count < 0) {
-			pr_err("invalid count\n");
-			goto ERROR;
-		}
-		hw_ver = zte_get_board_ver();
-		CDBG("zte_hw: get the  hw board version is %d\n", hw_ver);
-		if (hw_ver == 3) {
-			src_node = of_parse_phandle(of_node, "qcom,led-flash-src", 0);
-			if (!src_node) {
-				CDBG(" %s:%d  src_node NULL\n", __func__, __LINE__);
-			} else {
-				rc = of_property_read_u32(src_node, "cell-index", &val);
-				CDBG("%s qcom,led flash cell index %d, rc %d\n", __func__,
-				val, rc);
-				if (rc < 0) {
-					pr_err("%s:%d failed %d\n", __func__, __LINE__, rc);
-					goto ERROR;
-				}
-				sensor_info->subdev_id[SUB_MODULE_LED_FLASH] = val;
-				of_node_put(src_node);
-				src_node = NULL;
-			}
-		} else {
-			src_node = of_parse_phandle(of_node, "qcom,led-flash-src", 1);
-			if (!src_node) {
-				CDBG("%s:%d  src_node NULL\n", __func__, __LINE__);
-			} else {
-				rc = of_property_read_u32(src_node, "cell-index", &val);
-				CDBG("%s qcom,led flash cell index %d, rc %d\n", __func__,
-				val, rc);
-				if (rc < 0) {
-					pr_err("%s:%d failed %d\n", __func__, __LINE__, rc);
-					goto ERROR;
-				}
-				sensor_info->subdev_id[SUB_MODULE_LED_FLASH] = val;
-				of_node_put(src_node);
-				src_node = NULL;
-			}
-		}
-	}
-#else
+
 	src_node = of_parse_phandle(of_node, "qcom,led-flash-src", 0);
 	if (!src_node) {
 		CDBG("%s:%d src_node NULL\n", __func__, __LINE__);
@@ -267,7 +227,7 @@ int msm_sensor_get_sub_module_index(struct device_node *of_node,
 		of_node_put(src_node);
 		src_node = NULL;
 	}
-#endif
+
 	rc = of_property_read_u32(of_node, "qcom,strobe-flash-sd-index", &val);
 	if (rc != -EINVAL) {
 		CDBG("%s qcom,strobe-flash-sd-index %d, rc %d\n", __func__,
@@ -1117,17 +1077,18 @@ int msm_camera_get_dt_vreg_data(struct device_node *of_node,
 	struct camera_vreg_t **cam_vreg, int *num_vreg)
 {
 	int rc = 0, i = 0;
-	uint32_t count = 0;
+	int count = 0;
 	uint32_t *vreg_array = NULL;
 	struct camera_vreg_t *vreg = NULL;
 	bool custom_vreg_name =  false;
 
 	count = of_property_count_strings(of_node, "qcom,cam-vreg-name");
-	CDBG("%s qcom,cam-vreg-name count %d\n", __func__, count);
-
-	if (!count)
+	CDBG("%s qcom,cam-vreg-name count is %d\n", __func__, count);
+	if (count <= 0) {
+		count = 0;
+		CDBG("camera have no vreg supply,warning ,check power supply!!!\n");
 		return 0;
-
+	}
 	vreg = kzalloc(sizeof(*vreg) * count, GFP_KERNEL);
 	if (!vreg) {
 		pr_err("%s failed %d\n", __func__, __LINE__);
@@ -1364,9 +1325,9 @@ int msm_camera_power_up(struct msm_camera_power_ctrl_t *ctrl,
 			if (!ctrl->gpio_conf->gpio_num_info->valid
 				[power_setting->seq_val])
 				continue;
-			CDBG("%s:%d gpio set val %d\n", __func__, __LINE__,
-				ctrl->gpio_conf->gpio_num_info->gpio_num
-				[power_setting->seq_val]);
+			CDBG("%s:%d gpio set seq_val %d config_val is %d\n", __func__, __LINE__,
+				ctrl->gpio_conf->gpio_num_info->gpio_num[power_setting->seq_val],
+				(int) power_setting->config_val);
 			gpio_set_value_cansleep(
 				ctrl->gpio_conf->gpio_num_info->gpio_num
 				[power_setting->seq_val],
@@ -1554,6 +1515,9 @@ int msm_camera_power_down(struct msm_camera_power_ctrl_t *ctrl,
 			if (!ctrl->gpio_conf->gpio_num_info->valid
 				[pd->seq_val])
 				continue;
+			CDBG("%s:%d gpio set seq_val %d config_val is %d\n", __func__, __LINE__,
+				ctrl->gpio_conf->gpio_num_info->gpio_num[pd->seq_val],
+				(int) pd->config_val);
 			gpio_set_value_cansleep(
 				ctrl->gpio_conf->gpio_num_info->gpio_num
 				[pd->seq_val],

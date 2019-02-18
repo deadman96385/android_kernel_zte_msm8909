@@ -18,7 +18,7 @@
 #include "msm_cci.h"
 #include "msm_eeprom.h"
 
-#define CONFIG_MSMB_CAMERA_DEBUG
+#define CONFIG_MSMB_CAMERA_DEBUG 1
 #undef CDBG
 #ifdef CONFIG_MSMB_CAMERA_DEBUG
 #define CDBG(fmt, args...) pr_err(fmt, ##args)
@@ -43,9 +43,11 @@
 * Post compatible module info to vendor.by FENGYUAO_20150528.
 */
 #define SENSOR_NAME_MAX_SIZE 32
+/*
 char post_sensor_module_name[SENSOR_NAME_MAX_SIZE];
 static char post_chromtix_lib_name[SENSOR_NAME_MAX_SIZE];
 static char post_default_chromtix_lib_name[SENSOR_NAME_MAX_SIZE];
+*/
 /* end */
 
 typedef struct {
@@ -115,7 +117,14 @@ MODULE_Map_Table OV5670_MODULE_MAP[] = {
 #define OV8856_SENSOR_INFO_MODULE_ID_LITEARRAY	0x04
 #define OV8856_SENSOR_INFO_MODULE_ID_DARLING		0x05
 #define OV8856_SENSOR_INFO_MODULE_ID_QTECH		0x06
-
+#define OV8856_SENSOR_INFO_MODULE_ID_SHINETECH		0x55
+#ifdef CONFIG_BOARD_CALBEE
+MODULE_Map_Table OV8856_MODULE_MAP[] = {
+	{OV8856_SENSOR_INFO_MODULE_ID_A_KERR, "a_kerr_ov8856_tm107v'", "a_kerr_ov8856_tm107v", NULL},
+	{OV8856_SENSOR_INFO_MODULE_ID_QTECH, "qtech_ov8856_tm107v", "qtech_ov8856_tm107v", NULL},
+	{OV8856_SENSOR_INFO_MODULE_ID_SHINETECH, "shinetech_ov8856_tm107v", "shinetech_ov8856_tm107v", NULL},
+};
+#else
 MODULE_Map_Table OV8856_MODULE_MAP[] = {
 	{OV8856_SENSOR_INFO_MODULE_ID_SUNNY, "sunny_ov8856", "sunny_ov8856", NULL},
 	{OV8856_SENSOR_INFO_MODULE_ID_TRULY, "truly_ov8856", "truly_ov8856", NULL},
@@ -123,7 +132,9 @@ MODULE_Map_Table OV8856_MODULE_MAP[] = {
 	{OV8856_SENSOR_INFO_MODULE_ID_LITEARRAY, "litearray_ov8856", "litearray_ov8856", NULL},
 	{OV8856_SENSOR_INFO_MODULE_ID_DARLING, "darling_ov8856", "darling_tov8856", NULL},
 	{OV8856_SENSOR_INFO_MODULE_ID_QTECH, "qtech_ov8856", "qtech_ov8856", NULL},
+	{OV8856_SENSOR_INFO_MODULE_ID_SHINETECH, "shinetech_ov8856", "shinetech_ov8856", NULL},
 };
+#endif
 
 #define S5K5E8_SENSOR_INFO_MODULE_ID_SUNNY		0x01
 #define S5K5E8_SENSOR_INFO_MODULE_ID_SUNWIN		0x68
@@ -149,7 +160,7 @@ MODULE_Map_Table S5K5E8_MODULE_MAP[] = {
 };
 #endif
 
-#define S5K4H8_SENSOR_INFO_MODULE_ID_SUNWIN		0x68
+#define S5K4H8_SENSOR_INFO_MODULE_ID_SUNWIN		0x52
 #define S5K4H8_SENSOR_INFO_MODULE_ID_A_KERR		0x03
 
 MODULE_Map_Table S5K4H8_MODULE_MAP[] = {
@@ -157,6 +168,12 @@ MODULE_Map_Table S5K4H8_MODULE_MAP[] = {
 	{S5K4H8_SENSOR_INFO_MODULE_ID_A_KERR, "a_kerr_s5k4h8", "a_kerr_s5k4h8", NULL},
 };
 
+#define GC5025_SENSOR_INFO_MODULE_ID_SUNWIN		0x56
+#define GC5025_SENSOR_INFO_MODULE_ID_SHINETECH	0x58
+MODULE_Map_Table GC5025_MODULE_MAP[] = {
+	{GC5025_SENSOR_INFO_MODULE_ID_SUNWIN, "sunwin_gc5025", "sunwin_gc5025", NULL},
+	{GC5025_SENSOR_INFO_MODULE_ID_SHINETECH, "shinetech_gc5025", "shinetech_gc5025", NULL},
+};
 DEFINE_MSM_MUTEX(msm_eeprom_mutex);
 #ifdef CONFIG_COMPAT
 static struct v4l2_file_operations msm_eeprom_v4l2_subdev_fops;
@@ -237,12 +254,12 @@ static uint32_t msm_eeprom_match_crc(struct msm_eeprom_memory_block_t *data)
   *
   * by ZTE_WQW_20151204 weiqiwei
   */
-
+/*
 char *msm_eeprom_get_post_sensor_module_name(void)
 {
 	return post_sensor_module_name;
-}
-EXPORT_SYMBOL(msm_eeprom_get_post_sensor_module_name);
+}*/
+/*EXPORT_SYMBOL(msm_eeprom_get_post_sensor_module_name);*/
 
 static int msm_eeprom_get_cmm_data(struct msm_eeprom_ctrl_t *e_ctrl,
 								   struct msm_eeprom_cfg_data *cdata)
@@ -295,14 +312,14 @@ static int msm_eeprom_config(struct msm_eeprom_ctrl_t *e_ctrl,
 		*/
 
 		memcpy(cdata->chromtix_lib_name,
-			   post_chromtix_lib_name,
+			   e_ctrl->zte_post_chromtix_lib_name,
 			   sizeof(cdata->chromtix_lib_name));
 		pr_err("%s cdata->chromtix_lib_name %s\n", __func__, cdata->chromtix_lib_name);
 		memcpy(cdata->sensor_module_name,
-			   post_sensor_module_name,
+			   e_ctrl->zte_post_sensor_module_name,
 			   sizeof(cdata->sensor_module_name));
 		memcpy(cdata->default_chromtix_lib_name,
-			   post_default_chromtix_lib_name,
+			   e_ctrl->zte_post_default_chromtix_lib_name,
 			   sizeof(cdata->default_chromtix_lib_name));
 		/* end */
 
@@ -776,15 +793,15 @@ static int msm_eeprom_config32(struct msm_eeprom_ctrl_t *e_ctrl,
 		* Post compatible module info to vendor.by FENGYUAO_20150528.
 		*/
 		memcpy(cdata->chromtix_lib_name,
-			   post_chromtix_lib_name,
+			   e_ctrl->zte_post_chromtix_lib_name,
 			   sizeof(cdata->chromtix_lib_name));
 
 		memcpy(cdata->sensor_module_name,
-			   post_sensor_module_name,
+			   e_ctrl->zte_post_sensor_module_name,
 			   sizeof(cdata->sensor_module_name));
 
 		memcpy(cdata->default_chromtix_lib_name,
-			   post_default_chromtix_lib_name,
+			   e_ctrl->zte_post_default_chromtix_lib_name,
 			   sizeof(cdata->default_chromtix_lib_name));
 		/* end */
 
@@ -902,25 +919,25 @@ static void parse_module_name(struct msm_eeprom_ctrl_t *e_ctrl,
 		*/
 		if (map && (map[index].sensor_module_name)) {
 			if (strlen(map[index].sensor_module_name) <  SENSOR_NAME_MAX_SIZE)
-				strlcpy(post_sensor_module_name,  map[index].sensor_module_name,
+				strlcpy(e_ctrl->zte_post_sensor_module_name,  map[index].sensor_module_name,
 					strlen(map[index].sensor_module_name) + 1);
 
 			pr_err("ZTE_CAMERA:%s:%d: sensor_module_name = %s\n",
-				   __func__, __LINE__, post_sensor_module_name);
+				   __func__, __LINE__, e_ctrl->zte_post_sensor_module_name);
 		}
 		/* end */
 
 		e_ctrl->chromtix_lib_name = map[index].chromtix_lib_name;
 		/*
-		* Post compatible module info to vendor.by FENGYUAO_20150528.
+		* Post compatible module info to vendor.by hujian _20170817.
 		*/
 		if (map && (map[index].chromtix_lib_name)) {
 			if (strlen(map[index].chromtix_lib_name) <  SENSOR_NAME_MAX_SIZE)
-				strlcpy(post_chromtix_lib_name, map[index].chromtix_lib_name,
+				strlcpy(e_ctrl->zte_post_chromtix_lib_name, map[index].chromtix_lib_name,
 					strlen(map[index].chromtix_lib_name) + 1);
 
 			pr_err("ZTE_CAMERA:%s:%d: chromtix_lib_name = %s\n",
-				   __func__, __LINE__, post_chromtix_lib_name);
+				   __func__, __LINE__, e_ctrl->zte_post_chromtix_lib_name);
 		}
 		/* end */
 
@@ -930,10 +947,11 @@ static void parse_module_name(struct msm_eeprom_ctrl_t *e_ctrl,
 		*/
 		if (map && (map[index].default_chromtix_lib_name)) {
 			if (strlen(map[index].default_chromtix_lib_name) <  SENSOR_NAME_MAX_SIZE)
-				strlcpy(post_default_chromtix_lib_name, map[index].default_chromtix_lib_name,
-					strlen(map[index].default_chromtix_lib_name) + 1);
+				strlcpy(e_ctrl->zte_post_default_chromtix_lib_name,
+					map[index].default_chromtix_lib_name,
+						strlen(map[index].default_chromtix_lib_name) + 1);
 			pr_err("ZTE_CAMERA:%s:%d: default_chromtix_lib_name = %s\n",
-				   __func__, __LINE__, post_default_chromtix_lib_name);
+				   __func__, __LINE__, e_ctrl->zte_post_default_chromtix_lib_name);
 		}
 		/* end */
 
@@ -1939,6 +1957,8 @@ static int s5k4h8_read_eeprom_memory(struct msm_eeprom_ctrl_t *e_ctrl,
 	uint16_t  lsc_group2_flag = 0;
 	int32_t group_number;
 	uint32_t module_id_addr;
+	uint32_t lsc_group1_flag_addr;
+	uint32_t lsc_group2_flag_addr;
 	uint32_t af_flag_addr;
 	uint32_t check_sum;
 	uint8_t *buff_data;
@@ -1982,8 +2002,8 @@ static int s5k4h8_read_eeprom_memory(struct msm_eeprom_ctrl_t *e_ctrl,
 	}
 
 	/*read lsc group1 flag*/
-	module_id_addr = 0x0A3E;
-	e_ctrl->i2c_client.i2c_func_tbl->i2c_read(&(e_ctrl->i2c_client), module_id_addr, &lsc_group1_flag,
+	lsc_group1_flag_addr = 0x0A3E;
+	e_ctrl->i2c_client.i2c_func_tbl->i2c_read(&(e_ctrl->i2c_client), lsc_group1_flag_addr, &lsc_group1_flag,
 		MSM_CAMERA_I2C_BYTE_DATA);
 	pr_info("zte_eeprom: read lsc group1 flag is =0x%X\n", lsc_group1_flag);
 
@@ -1998,8 +2018,8 @@ static int s5k4h8_read_eeprom_memory(struct msm_eeprom_ctrl_t *e_ctrl,
 		MSM_CAMERA_I2C_BYTE_DATA);
 	msleep(20);
 
-	module_id_addr = 0x0A1B;
-	e_ctrl->i2c_client.i2c_func_tbl->i2c_read(&(e_ctrl->i2c_client), module_id_addr, &lsc_group2_flag,
+	lsc_group2_flag_addr = 0x0A1B;
+	e_ctrl->i2c_client.i2c_func_tbl->i2c_read(&(e_ctrl->i2c_client), lsc_group2_flag_addr, &lsc_group2_flag,
 		MSM_CAMERA_I2C_BYTE_DATA);
 	pr_info("zte_eeprom: read lsc flag2 is =0x%X\n", lsc_group2_flag);
 
@@ -2021,7 +2041,6 @@ static int s5k4h8_read_eeprom_memory(struct msm_eeprom_ctrl_t *e_ctrl,
 	 *AWB otp
 	 */
 	s5k4h8_read_eeprom_init(e_ctrl);
-	module_id_addr = 0x0A04;
 	num_byte = S5K4H8_AWB_SIZE;
 	buff_data = kzalloc(num_byte, GFP_KERNEL);
 
@@ -2036,10 +2055,10 @@ static int s5k4h8_read_eeprom_memory(struct msm_eeprom_ctrl_t *e_ctrl,
 	}
 	check_sum = check_sum % 255 + 1;
 
-	e_ctrl->i2c_client.i2c_func_tbl->i2c_read(&(e_ctrl->i2c_client), module_id_addr + S5K4H8_AWB_SIZE+1,
+	e_ctrl->i2c_client.i2c_func_tbl->i2c_read(&(e_ctrl->i2c_client), module_id_addr + S5K4H8_AWB_SIZE,
 		&val,	MSM_CAMERA_I2C_BYTE_DATA);
 	pr_info("%s:AWB checksum reg temp=0x%X Read addr is 0x%X,checksum is 0x%X\n", __func__,
-		val, (module_id_addr + S5K4H8_AWB_SIZE+1), check_sum);
+		val, (module_id_addr + S5K4H8_AWB_SIZE), check_sum);
 
 	if (check_sum == val) {
 		pr_err("AWB OTP read success\n");
@@ -2125,6 +2144,260 @@ static int s5k4h8_read_eeprom_memory(struct msm_eeprom_ctrl_t *e_ctrl,
 	return rc;
 }
 
+#define IMAGE_NORMAL_MIRROR
+#define DD_PARAM_QTY	200
+#define WINDOW_WIDTH	0x0a30
+#define WINDOW_HEIGHT	0x079c
+#define RG_TYPICAL	0x0400
+#define BG_TYPICAL	0x0400
+#define INFO_ROM_START	0x01
+#define INFO_WIDTH	0x08
+#define WB_ROM_START	0x11
+#define WB_WIDTH	0x05
+#define GOLDEN_ROM_START	0x1c
+#define GOLDEN_WIDTH	0x05
+#define REG_ROM_START	0x62
+
+typedef struct otp_gc5025 {
+	uint16_t module_id;
+	uint16_t lens_id;
+	uint16_t vcm_id;
+	uint16_t vcm_driver_id;
+	uint16_t year;
+	uint16_t month;
+	uint16_t day;
+	uint16_t rg_gain;
+	uint16_t bg_gain;
+	uint16_t wb_flag;
+	uint16_t golden_flag;
+	uint16_t dd_param_x[DD_PARAM_QTY];
+	uint16_t dd_param_y[DD_PARAM_QTY];
+	uint16_t dd_param_type[DD_PARAM_QTY];
+	uint16_t dd_cnt;
+	uint16_t dd_flag;
+	uint16_t golden_rg;
+	uint16_t golden_bg;
+	uint16_t reg_addr[10];
+	uint16_t reg_value[10];
+	uint16_t reg_num;
+} gc5025_otp;
+
+static gc5025_otp gc5025_otp_info;
+
+typedef enum{
+	otp_page0 = 0,
+	otp_page1,
+} otp_page;
+
+typedef enum {
+	otp_close = 0,
+	otp_open,
+} otp_state;
+
+static uint16_t gc5025_Sensor_ReadReg(
+	struct msm_eeprom_ctrl_t *e_ctrl, uint8_t reg_addr)
+{
+	uint16_t reg_value = 0;
+
+	e_ctrl->i2c_client.i2c_func_tbl->i2c_read(
+				&(e_ctrl->i2c_client),
+				reg_addr,
+				&reg_value, MSM_CAMERA_I2C_BYTE_DATA);
+	return reg_value;
+}
+
+static void gc5025_Sensor_WriteReg(
+	struct msm_eeprom_ctrl_t *e_ctrl, uint8_t reg_addr, uint8_t reg_value)
+{
+
+	e_ctrl->i2c_client.i2c_func_tbl->i2c_write(
+		&(e_ctrl->i2c_client), reg_addr, reg_value, MSM_CAMERA_I2C_BYTE_DATA);
+}
+
+
+static uint8_t gc5025_read_otp(struct msm_eeprom_ctrl_t *e_ctrl, uint8_t addr)
+{
+	uint8_t value;
+	uint8_t regd4;
+	uint16_t realaddr = addr * 8;
+
+	regd4 = gc5025_Sensor_ReadReg(e_ctrl, 0xd4);
+	gc5025_Sensor_WriteReg(e_ctrl, 0xfe, 0x00);
+	gc5025_Sensor_WriteReg(e_ctrl, 0xd4, (regd4&0xfc)+((realaddr>>8)&0x03));
+	gc5025_Sensor_WriteReg(e_ctrl, 0xd5, realaddr&0xff);
+	gc5025_Sensor_WriteReg(e_ctrl, 0xf3, 0x20);
+	value = gc5025_Sensor_ReadReg(e_ctrl, 0xd7);
+
+	return value;
+}
+
+static void gc5025_read_otp_group(struct msm_eeprom_ctrl_t *e_ctrl, uint8_t addr, uint8_t *buff, int size)
+{
+	uint8_t i;
+	uint8_t regd4;
+	uint16_t realaddr = addr * 8;
+
+	regd4 = gc5025_Sensor_ReadReg(e_ctrl, 0xd4);
+
+	gc5025_Sensor_WriteReg(e_ctrl, 0xfe, 0x00);
+	gc5025_Sensor_WriteReg(e_ctrl, 0xd4, (regd4&0xfc) + ((realaddr >> 8)&0x03));
+	gc5025_Sensor_WriteReg(e_ctrl, 0xd5, realaddr);
+	gc5025_Sensor_WriteReg(e_ctrl, 0xf3, 0x20);
+	gc5025_Sensor_WriteReg(e_ctrl, 0xf3, 0x88);
+
+	for (i = 0; i < size; i++) {
+		buff[i] = gc5025_Sensor_ReadReg(e_ctrl, 0xd7);
+	}
+}
+
+static void gc5025_select_page_otp(struct msm_eeprom_ctrl_t *e_ctrl, otp_page otp_select_page)
+{
+	uint8_t page;
+
+	gc5025_Sensor_WriteReg(e_ctrl, 0xfe, 0x00);
+	page = gc5025_Sensor_ReadReg(e_ctrl, 0xd4);
+	CDBG("GC5025 select read page is 0x%x !!\n", page);
+
+	switch (otp_select_page) {
+	case otp_page0:
+		page = page & 0xfb;
+		break;
+	case otp_page1:
+		page = page | 0x04;
+		break;
+	default:
+		break;
+	}
+
+	msleep(20);
+	CDBG("GC5025 select write page is 0x%x !!\n", page);
+	gc5025_Sensor_WriteReg(e_ctrl, 0xd4, page);
+
+}
+
+static void gc5025_gcore_read_otp_info(struct msm_eeprom_ctrl_t *e_ctrl)
+{
+	uint8_t flag1;
+	uint8_t index, i = 0;
+	uint16_t check;
+	uint8_t info[8];
+
+	memset(&gc5025_otp_info, 0, sizeof(gc5025_otp));
+
+	gc5025_select_page_otp(e_ctrl, otp_page1);
+	flag1 = gc5025_read_otp(e_ctrl, 0x00);
+	CDBG("GC5025_OTP : flag1 = 0x%x\n", flag1);
+
+	for (index = 0; index < 2; index++) {
+		switch ((flag1>>(4 + 2 * index))&0x03) {
+		case 0x00:
+			CDBG("GC5025_OTP_INFO group %d is Empty !!\n", index + 1);
+			break;
+		case 0x01:
+			CDBG("GC5025_OTP_INFO group %d is Valid !!\n", index + 1);
+			check = 0;
+			gc5025_read_otp_group(e_ctrl, INFO_ROM_START + index * INFO_WIDTH, &info[0], INFO_WIDTH);
+			for (i = 0; i < INFO_WIDTH - 1; i++) {
+				check += info[i];
+			}
+			CDBG("GC5025_OTP_INFO cacluate checksum is %x,checksum data is %x\n", check%256,
+				info[INFO_WIDTH-1]);
+			if ((check % 256) == info[INFO_WIDTH-1]) {
+				gc5025_otp_info.module_id = info[0];
+				gc5025_otp_info.lens_id = info[1];
+				gc5025_otp_info.vcm_driver_id = info[2];
+				gc5025_otp_info.vcm_id = info[3];
+				gc5025_otp_info.year = info[4];
+				gc5025_otp_info.month = info[5];
+				gc5025_otp_info.day = info[6];
+			} else {
+				CDBG("GC5025_OTP_INFO Check sum %d Error !!\n", index + 1);
+			}
+			break;
+		case 0x02:
+		case 0x03:
+			CDBG("GC5025_OTP_INFO group %d is Invalid !!\n", index + 1);
+			break;
+		default:
+			break;
+		}
+
+
+	}
+
+	/*print otp information*/
+	CDBG("GC5025_OTP_INFO:module_id=0x%x\n", gc5025_otp_info.module_id);
+	CDBG("GC5025_OTP_INFO:lens_id=0x%x\n", gc5025_otp_info.lens_id);
+	CDBG("GC5025_OTP_INFO:vcm_id=0x%x\n", gc5025_otp_info.vcm_id);
+	CDBG("GC5025_OTP_INFO:vcm_driver_id=0x%x\n", gc5025_otp_info.vcm_driver_id);
+	CDBG("GC5025_OTP_INFO:data=%d-%d-%d\n", gc5025_otp_info.year,
+		gc5025_otp_info.month, gc5025_otp_info.day);
+}
+
+
+static void gc5025_gcore_enable_otp(struct msm_eeprom_ctrl_t *e_ctrl, otp_state state)
+{
+	uint8_t otp_clk, otp_en;
+
+	otp_clk = gc5025_Sensor_ReadReg(e_ctrl, 0xfa);
+	otp_en = gc5025_Sensor_ReadReg(e_ctrl, 0xd4);
+	if (state) {
+		otp_clk = otp_clk | 0x10;
+		otp_en = otp_en | 0x80;
+		msleep(20);
+		gc5025_Sensor_WriteReg(e_ctrl, 0xfa, otp_clk);
+		gc5025_Sensor_WriteReg(e_ctrl, 0xd4, otp_en);
+	} else {
+		otp_en = otp_en & 0x7f;
+		otp_clk = otp_clk & 0xef;
+		msleep(20);
+		gc5025_Sensor_WriteReg(e_ctrl, 0xd4, otp_en);
+		gc5025_Sensor_WriteReg(e_ctrl, 0xfa, otp_clk);
+	}
+
+}
+
+static int gc5025_read_eeprom_memory(struct msm_eeprom_ctrl_t *e_ctrl,
+	struct msm_eeprom_memory_block_t *block)
+{
+	int rc = 0;
+	uint16_t  sensor_module_id = 0;
+	struct msm_eeprom_board_info *eb_info;
+
+	if (!e_ctrl) {
+		pr_info("%s e_ctrl is NULL", __func__);
+		return -EINVAL;
+	}
+
+	pr_info("%s begin", __func__);
+	eb_info = e_ctrl->eboard_info;
+	e_ctrl->i2c_client.addr_type = MSM_CAMERA_I2C_BYTE_ADDR;
+
+	gc5025_Sensor_WriteReg(e_ctrl, 0xfe, 0x00);
+	gc5025_Sensor_WriteReg(e_ctrl, 0xfe, 0x00);
+	gc5025_Sensor_WriteReg(e_ctrl, 0xfe, 0x00);
+	gc5025_Sensor_WriteReg(e_ctrl, 0xf7, 0x01);
+	gc5025_Sensor_WriteReg(e_ctrl, 0xf8, 0x11);
+	gc5025_Sensor_WriteReg(e_ctrl, 0xf9, 0x00);
+	gc5025_Sensor_WriteReg(e_ctrl, 0xfa, 0xa0);
+	gc5025_Sensor_WriteReg(e_ctrl, 0xfc, 0x2e);
+	gc5025_gcore_enable_otp(e_ctrl, otp_open);
+	gc5025_gcore_read_otp_info(e_ctrl);
+	gc5025_gcore_enable_otp(e_ctrl, otp_close);
+
+
+	sensor_module_id = gc5025_otp_info.module_id;
+	if (sensor_module_id != 0) {
+		pr_err("sensor_module_id =0x%x\n", sensor_module_id);
+		parse_module_name(e_ctrl, GC5025_MODULE_MAP,
+				  sizeof(GC5025_MODULE_MAP) / sizeof(MODULE_Map_Table), sensor_module_id);
+	}
+	block->mapdata[0] = gc5025_otp_info.module_id;
+	block->mapdata[1] = gc5025_otp_info.lens_id;
+
+	pr_info("%s end\n", __func__);
+	return rc;
+}
 static int zte_eeprom_generate_map(struct device_node *of,
 								   struct msm_eeprom_memory_block_t *data)
 {
@@ -2280,6 +2553,8 @@ static int msm_eeprom_i2c_probe(struct i2c_client *client,
 		rc = s5k5e8_read_eeprom_memory(e_ctrl, &e_ctrl->cal_data);
 	} else if (strcmp(eb_info->eeprom_name, "common_s5k4h8") == 0) {
 		rc = s5k4h8_read_eeprom_memory(e_ctrl, &e_ctrl->cal_data);
+	} else if (strcmp(eb_info->eeprom_name, "common_gc5025") == 0) {
+		rc = gc5025_read_eeprom_memory(e_ctrl, &e_ctrl->cal_data);
 	} else {
 		pr_err("%s read_eeprom_memory not configured\n", __func__);
 	}

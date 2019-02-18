@@ -253,7 +253,8 @@ static ssize_t show_msm_sensor_name(struct device *dev, struct device_attribute 
 	} else
 		index = 0;
 
-	len += snprintf(buf + len, sizeof(buf), "%s\n", msm_sensor_sysdev_info[index].name);
+	len += snprintf(buf + len, strlen(msm_sensor_sysdev_info[index].name) + 1, "%s\n",
+		msm_sensor_sysdev_info[index].name);
 
 	CDBG("%s:%d   %s\n", __func__, __LINE__, buf);
 

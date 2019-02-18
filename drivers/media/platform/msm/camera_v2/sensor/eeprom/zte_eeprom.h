@@ -1,4 +1,4 @@
-/* Copyright (c) 2011-2014, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2011-2015, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -38,6 +38,7 @@ struct msm_eeprom_ctrl_t {
 	enum msm_camera_device_type_t eeprom_device_type;
 	struct msm_sd_subdev msm_sd;
 	enum cci_i2c_master_t cci_master;
+	enum i2c_freq_mode_t i2c_freq_mode;
 
 	struct msm_camera_i2c_client i2c_client;
 	struct msm_eeprom_memory_block_t cal_data;
@@ -45,23 +46,14 @@ struct msm_eeprom_ctrl_t {
 	struct msm_eeprom_board_info *eboard_info;
 	uint32_t subdev_id;
 /*
-  * camera sensor module compatile
-  *
-  * by ZTE_YCM_20140728 yi.changming 000028
-  */
+* camera sensor module compatile
+* by ZTE_YCM_20140728 yi.changming 000028
+*/
 	const char *sensor_module_name;
 	const char *chromtix_lib_name;
 	const char *default_chromtix_lib_name;
-
-	/*
-* Post compatible module info to vendor.by FENGYUAO_20150528.
-*/
-	#define SENSOR_NAME_MAX_SIZE 32
-	char zte_post_sensor_module_name[SENSOR_NAME_MAX_SIZE];
-	char zte_post_chromtix_lib_name[SENSOR_NAME_MAX_SIZE];
-	char zte_post_default_chromtix_lib_name[SENSOR_NAME_MAX_SIZE];
-/* end */
-
+	uint32_t checksum;
+	uint32_t valid_flag;
 };
 
 #endif

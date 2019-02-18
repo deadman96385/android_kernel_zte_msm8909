@@ -17,9 +17,7 @@
 #include <linux/gpio.h>
 #include <linux/of.h>
 #include "msm_camera_i2c.h"
-#ifdef CONFIG_BOARD_ELDEN
-extern int zte_get_board_ver(void);
-#endif
+
 int msm_sensor_get_sub_module_index(struct device_node *of_node,
 	struct  msm_sensor_info_t **s_info);
 
