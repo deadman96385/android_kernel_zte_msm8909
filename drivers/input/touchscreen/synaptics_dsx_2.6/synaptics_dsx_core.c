@@ -160,7 +160,9 @@ char *syn_fwfile_table[SYN_MOUDLE_NUM_MAX] = {
 	SYN_DIJING_FW_NAME,
 	SYN_LCE_FW_NAME,
 	SYN_DJN_FW_NAME,
-	SYN_HOLITCH_FW_NAME
+	SYN_LSE_FW_NAME,
+	SYN_HOLITCH_FW_NAME,
+	SYN_HUAXINGDA_FW_NAME,
 };
 
 static struct workqueue_struct *syna_smart_cover_wq;
@@ -1602,6 +1604,28 @@ static void synaptics_rmi4_f1a_report(struct synaptics_rmi4_data *rmi4_data,
 			f1a->button_map[button],
 			status);
 
+#if (defined(CONFIG_BOARD_DRACO) || defined(CONFIG_BOARD_KELLY) \
+	|| defined(CONFIG_BOARD_LEWIS) || defined(CONFIG_BOARD_GRAYJOYLITE) \
+	|| defined(CONFIG_BOARD_LOFT) || defined(CONFIG_BOARD_CALBEE))
+/*
+ * x means TP's X-axis coordinate value, y means TP's Y-axis,
+ * button 0, 1, 2 stand for the key of return home, and menu
+ */
+		switch (button) {
+		case 0:
+			x = 84;
+			break;
+		case 1:
+			x = 238;
+			break;
+		case 2:
+			x = 392;
+			break;
+		default:
+			break;
+		}
+		y = 920;
+#elif defined(CONFIG_BOARD_GEMI)
 		switch (button) {
 		case 0:
 			x = 131;
@@ -1616,6 +1640,22 @@ static void synaptics_rmi4_f1a_report(struct synaptics_rmi4_data *rmi4_data,
 			break;
 		}
 		y = 1371;
+#else
+		switch (button) {
+		case 0:
+			x = 85;
+			break;
+		case 1:
+			x = 240;
+			break;
+		case 2:
+			x = 395;
+			break;
+		default:
+			break;
+		}
+		y = 921;
+#endif
 
 #ifdef TYPE_B_PROTOCOL
 		input_mt_slot(rmi4_data->input_dev, 0);
@@ -4319,9 +4359,17 @@ void synaptics_get_configid(
 		snprintf(p_sensor, PAGE_SIZE, "DJN(0x%x)", ts->config_id.sensor);
 		touch_module = DJN;
 		break;
+	case 'P':
+		snprintf(p_sensor, PAGE_SIZE, "LSE(0x%x)", ts->config_id.sensor);
+		touch_module = LSE;
+		break;
 	case 'R':
 		snprintf(p_sensor, PAGE_SIZE, "HOLITCH(0x%x)", ts->config_id.sensor);
 		touch_module = HOLITCH;
+		break;
+	case 'T':
+		snprintf(p_sensor, PAGE_SIZE, "HUAXINGDA(0x%x)", ts->config_id.sensor);
+		touch_module = HUAXINGDA;
 		break;
 	default:
 		snprintf(p_sensor, PAGE_SIZE, "unknown(0x%x)", ts->config_id.sensor);
