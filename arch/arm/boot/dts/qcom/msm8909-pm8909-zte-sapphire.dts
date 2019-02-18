@@ -82,10 +82,19 @@
 
 / {
 	qrd_batterydata: qcom,battery-data {
-		qcom,rpull-up-kohm = <0>;
+		qcom,rpull-up-kohm = <100000>;
 		qcom,vref-batt-therm = <1800000>;
 
 		#include "zte-batterydata-1600mah.dtsi"
+	};
+};
+
+/ {
+	qrd_batterydata_byd: qcom,battery-data-one {
+		qcom,rpull-up-kohm = <100000>;
+		qcom,vref-batt-therm = <1800000>;
+
+		#include "zte-batterydata-1600mah-jiade.dtsi"
 	};
 };
 

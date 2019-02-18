@@ -17,11 +17,6 @@
 
 &soc {
 	i2c@78b9000 {
-		synaptics@20 {
-			avdd-supply = <&pm8916_l17>;
-			vdd-supply = <&pm8916_l6>;
-		};
-
 		atmel_mxt_ts@4a {
 			vdd_ana-supply = <&pm8916_l17>;
 			vcc_i2c-supply = <&pm8916_l6>;

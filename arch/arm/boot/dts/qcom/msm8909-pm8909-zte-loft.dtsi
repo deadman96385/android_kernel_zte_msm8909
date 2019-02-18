@@ -1,35 +1,17 @@
-#include "dsi-panel-zte-lead-cpt-fl10802-fwvga-video.dtsi"
-#include "dsi-panel-zte-yushun-hsd-nt35512s-fwvga-video.dtsi"
-#include "dsi-panel-zte-dijing-hsd-ili9806e-fwvga-video.dtsi"
-#include "dsi-panel-zte-yassy-hx8379c-cpt-5p0-fwvga-video.dtsi"
-#include "dsi-panel-zte-liansi-boe-ili9806e-fwvga-video.dtsi"
-#include "dsi-panel-zte-helitai-hsd-otm8109a-fwvga-video.dtsi"
-#include "touch-key-backlight-draco.dtsi"
-&dsi_fl10802_fwvga_video {
-	qcom,cont-splash-enabled;
-};
+/*
+ * Copyright (c) 2014-2015, The Linux Foundation. All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 and
+ * only version 2 as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ */
 
-&dsi_nt35512s_fwvga_video {
-	qcom,cont-splash-enabled;
-};
-
-&dsi_ili9806e_fwvga_video {
-	qcom,cont-splash-enabled;
-};
-
-&dsi_hx8379c_fwvga_video {
-	qcom,cont-splash-enabled;
-};
-
-&mdss_dsi0 {
-	qcom,dsi-pref-prim-pan = <&dsi_fl10802_fwvga_video &dsi_nt35512s_fwvga_video
-			&dsi_ili9806e_fwvga_video &dsi_hx8379c_fwvga_video>;
-	pinctrl-names = "mdss_default", "mdss_sleep";
-	pinctrl-0 = <&mdss_dsi_active &mdss_te_active>;
-	pinctrl-1 = <&mdss_dsi_suspend &mdss_te_suspend>;
-
-	qcom,platform-reset-gpio = <&msm_gpio 25 0>;
-};
+#include "touch-key-backlight-loft.dtsi"
 
 &soc {
 	i2c@78b5000 { /* BLSP1 QUP1 */
@@ -38,8 +20,8 @@
 			reg = <0x18>;
 			interrupt-parent = <&msm_gpio>;
 			interrupts = <96 0x2002>;
-			vdd-supply = <&pm8916_l17>;
-			vio-supply = <&pm8916_l6>;
+			vdd-supply = <&pm8909_l17>;
+			vio-supply = <&pm8909_l6>;
 			bosch,init-interval = <200>;
 			bosch,place = <5>;
 			bosch,gpio-int1 = <&msm_gpio 96 0x2002>;
@@ -51,9 +33,9 @@
 			reg = <0x0e>;
 			interrupt-parent = <&msm_gpio>;
 			/*interrupts = <96 0x2>;*/
-			vddhold-supply = <&pm8916_l17>;
-			vdd-supply = <&pm8916_l17>;
-			vio-supply = <&pm8916_l6>;
+			vddhold-supply = <&pm8909_l17>;
+			vdd-supply = <&pm8909_l17>;
+			vio-supply = <&pm8909_l6>;
 			kionix,min_interval = <5>;
 			kionix,poll_interval = <100>;
 			kionix,accel_direction = <5>;
@@ -69,9 +51,9 @@
 			reg = <0x08>;
 			interrupt-parent = <&msm_gpio>;
 			/*interrupts = <96 0x2>;*/
-			vddhold-supply = <&pm8916_l17>;
-			vdd-supply = <&pm8916_l17>;
-			vddio-supply = <&pm8916_l6>;
+			vddhold-supply = <&pm8909_l17>;
+			vdd-supply = <&pm8909_l17>;
+			vddio-supply = <&pm8909_l6>;
 			n2dm,min_interval = <1>;
 			n2dm,poll_interval = <100>;
 			n2dm,axis-map-x = <1>;
@@ -84,6 +66,19 @@
 			n2dm,fs-range = <0>;
 		};
 
+		mcube@4c { /* Accelerometer sensor */
+			compatible = "mcube,mc3xxx";
+			reg = <0x4c>;
+			interrupt-parent = <&msm_gpio>;
+			interrupts = <96 0x2002>;
+			vdd-supply = <&pm8909_l17>;
+			vio-supply = <&pm8909_l6>;
+			mcube,init-interval = <200>;
+			mcube,place = <5>;
+			mcube,use-interrupt = <0>;
+			mcube,gpio-int = <&msm_gpio 96 0x2002>;
+		};
+
 		ltr559@23 {
 			compatible = "liteon,ltr559";
 			reg = <0x23>;
@@ -92,8 +87,8 @@
 			pinctrl-1 = <&lpsensor_sleep>;
 			interrupt-parent = <&msm_gpio>;
 			interrupts = <94 0x2002>;
-			vdd-supply = <&pm8916_l17>;
-			vio-supply = <&pm8916_l6>;
+			vdd-supply = <&pm8909_l17>;
+			vio-supply = <&pm8909_l6>;
 			liteon,irq-gpio = <&msm_gpio 94 0x2002>;
 			liteon,highthr = <1500>;
 			liteon,lowthr = <1200>;
@@ -102,11 +97,24 @@
 		akm@c {
 			compatible = "ak,ak09911";
 			reg = <0x0c>;
-			vdd-supply = <&pm8916_l17>;
-			vio-supply = <&pm8916_l6>;
-			akm,layout = <0x5>;
+			vdd-supply = <&pm8909_l17>;
+			vio-supply = <&pm8909_l6>;
+			akm,layout = <0x2>;
 			akm,auto-report;
 		};
-
 	};
+};
+
+&sdc2_cd_on {
+	/delete-property/  bias-pull-down;
+	bias-disable;
+};
+
+&sdc2_cd_off {
+	/delete-property/  bias-pull-down;
+	bias-disable;
+};
+
+&sdhc_2 {
+	cd-gpios = <&msm_gpio 38 0x1>;
 };

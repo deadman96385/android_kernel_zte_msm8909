@@ -109,7 +109,7 @@
 		venus_qseecom_mem: venus_qseecom_region@0 {
 			linux,reserve-contiguous-region;
 			linux,memory-limit = <0x90000000>;
-			reg = <0 0 0 0x600000>;
+			reg = <0 0 0 0x700000>;
 			label = "venus_qseecom_mem";
 		};
 
@@ -855,7 +855,7 @@
 		qcom,hsusb-otg-mode = <1>; /* DEVICE only */
 		qcom,hsusb-otg-otg-control = <2>; /* PMIC */
 		qcom,dp-manual-pullup;
-		qcom,hsusb-otg-disable-reset;
+		/* qcom,hsusb-otg-disable-reset; */ /* removed for test, Qualcomm case No.03146209 */
 		qcom,phy-dvdd-always-on;
 		qcom,hsusb-otg-mpm-dpsehv-int = <49>;
 		qcom,hsusb-otg-mpm-dmsehv-int = <58>;
@@ -1784,6 +1784,8 @@
 		compatible = "qcom,mcd";
 		qcom,ce-hw-instance = <0>;
 		qcom,ce-device = <0>;
+		interrupts = <0 248 0>;
+		interrupt-names = "mcd_irq";
 		clocks = <&clock_gcc clk_crypto_clk_src>,
 			 <&clock_gcc clk_gcc_crypto_clk>,
 			 <&clock_gcc clk_gcc_crypto_ahb_clk>,

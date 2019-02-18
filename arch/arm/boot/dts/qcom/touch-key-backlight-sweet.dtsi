@@ -3,24 +3,26 @@
 &soc {
 	i2c@78b9000 { /* BLSP1 QUP5 */
 		synaptics@22 {
-			compatible = "synaptics,syna-ts";
-			reg = <0x20>;
+			compatible = "synaptics,dsx-i2c";
+			reg = <0x22>;
 			interrupt-parent = <&msm_gpio>;
 			interrupts = <13 0x2>;
-			vdd-supply = <&pm8916_l17>;
+			vdd_ana-supply = <&pm8916_l17>;
 			vcc_i2c-supply = <&pm8916_l6>;
-			/* pins used by touchscreen */
+			synaptics,pwr-reg-name = "vdd_ana";
+			synaptics,bus-reg-name = "vcc_i2c";
 			pinctrl-names = "pmx_ts_active","pmx_ts_suspend";
 			pinctrl-0 = <&ts_int_active &ts_reset_active>;
 			pinctrl-1 = <&ts_int_suspend &ts_reset_suspend>;
-			//synaptics,display-coords = <0 0 1079 1919>;
-			//synaptics,panel-coords = <0 0 1079 2084>;
 			synaptics,irq-gpio = <&msm_gpio 13 0x0>;
+			synaptics,irq-on-state = <0>;
+			synaptics,irq-flags = <0x2008>;
 			synaptics,reset-gpio = <&msm_gpio 12 0x0>;
-			synaptics,max_y = <0>;
-			synaptics,i2c-pull-up;
-			synaptics,power-down;
-			synaptics,disable-gpios;
+			synaptics,reset-on-state = <0>;
+			synaptics,reset-delay-ms = <100>;
+			synaptics,reset-active-ms = <20>;
+			synaptics,power-delay-ms = <100>;
+			synaptics,cap-button-codes = <158 102 187>;
 		};
 		goodix_ts@14 {
 				compatible = "goodix,gt1x";
@@ -50,6 +52,20 @@
 		zte,key-codes = <158 102 187>;
 	};
 	gen-vkeys1 {
+		compatible = "zte,gen-vkeys";
+		label = "syna-touchscreen";
+		zte,disp-maxy_px = <854>;
+		zte,disp-maxy_mm = <1100>;
+		zte,disp-maxx_mm = <625>;
+		zte,x1=<110>;
+		zte,x2=<310>;
+		zte,x3=<510>;
+		zte,lcd_offset=<25>;
+		zte,y_max_offset=<150>;
+		zte,dx=<100>;
+		zte,key-codes = <158 102 187>;
+	};
+	gen-vkeys2 {
 		compatible = "zte,gen-vkeys";
 		label = "goodix-ts";
 		zte,disp-maxy_px = <854>;

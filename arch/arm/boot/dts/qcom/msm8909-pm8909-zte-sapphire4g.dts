@@ -14,32 +14,27 @@
 
 #include "msm8909-qrd-skue.dtsi"
 #include "msm8909-memory.dtsi"
-#include "msm8909-pm8909-zte-calbee.dtsi"
-#include "msm8909-camera-sensor-zte-calbee.dtsi"
+#include "msm8909-pm8909-zte-sapphire4g.dtsi"
+#include "msm8909-camera-sensor-zte-sapphire.dtsi"
 
+#include "dsi-panel-zte-dijing-nt35521-cmi-5p5-720p-video.dtsi"
+#include "dsi-panel-zte-helitai-hsd-jd9161-4p0-fwvga-video.dtsi"
+#include "dsi-panel-zte-lianchuang-ili9806e-hsd-4p0-fwvga-video-z3001s.dtsi"
 
-#include "dsi_panel_zte_skyworth_ili9806e_cpt_5p0_fwvga_video.dtsi"
-#include "dsi-panel-zte-skyworth-hsd-ili9806e-fwvga-video.dtsi"
-#include "dsi-panel-zte-helitai-hsd-jd9161-fwvga-video.dtsi"
-#include "dsi_panel_zte_txd_jd9161b_hsd_5p0_fwvga_video.dtsi"
 / {
-	qcom,board-id= <0x1000b 113>, <0x1040b 113>;
+	qcom,board-id= <0x1000b 115>, <0x1040b 115>;
 };
 
-&dsi_hlt_jd9161_fwvga_video {
+&dsi_hlt_jd9161_4p_fwvga_video {
 	qcom,cont-splash-enabled;
 };
 
-&dsi_skyworth_ili9806e_fwvga_video {
-	qcom,cont-splash-enabled;
-};
-
-&dsi_ili9806e_fwvga_video {
+&dsi_lianchuang_ili9806e_hsd_4p0_fwvga_video {
 	qcom,cont-splash-enabled;
 };
 
 &mdss_dsi0 {
-	qcom,dsi-pref-prim-pan = <&dsi_ili9806e_fwvga_video>;
+	qcom,dsi-pref-prim-pan = <&dsi_hlt_jd9161_4p_fwvga_video>;
 	pinctrl-names = "mdss_default", "mdss_sleep";
 	pinctrl-0 = <&mdss_dsi_active &mdss_te_active>;
 	pinctrl-1 = <&mdss_dsi_suspend &mdss_te_suspend>;
@@ -87,10 +82,28 @@
 
 / {
 	qrd_batterydata: qcom,battery-data {
-		qcom,rpull-up-kohm = <0>;
+		qcom,rpull-up-kohm = <100000>;
 		qcom,vref-batt-therm = <1800000>;
 
-		#include "zte-batterydata-2520mah.dtsi"
+		#include "zte-batterydata-1600mah.dtsi"
+	};
+};
+
+/ {
+	qrd_batterydata_byd: qcom,battery-data-one {
+		qcom,rpull-up-kohm = <100000>;
+		qcom,vref-batt-therm = <1800000>;
+
+		#include "zte-batterydata-1600mah-jiade.dtsi"
+	};
+};
+
+/ {
+	qrd_batterydata_weike: qcom,battery-data-sec {
+		qcom,rpull-up-kohm = <100000>;
+		qcom,vref-batt-therm = <1800000>;
+
+		#include "zte-batterydata-1600mah-weike.dtsi"
 	};
 };
 
@@ -105,29 +118,18 @@
 			label = "hw_ver_id_1";
 		};
 	};
-
-	gpio-leds {
-		compatible = "gpio-leds";
-		keypad-backlight {
-			gpios = <&msm_gpio 97 0>;
-			label = "button-backlight";
-			linux,default-trigger = "none";
-		};
-	};
 };
 
 &pm8909_chg {
 	status = "ok";
 
-	qcom,vddmax-mv = <4400>;
-	qcom,vddsafe-mv = <4420>;
+	qcom,vddmax-mv = <4350>;
+	qcom,vddsafe-mv = <4380>;
 	qcom,vinmin-mv = <4308>;
-	qcom,ibatsafe-ma = <1000>;/*for p890a12/13 as ibat_max*/
-	qcom,thermal-mitigation = <1440 720 630 0>;
-	qcom,cold-bat-decidegc = <10>;
+	qcom,ibatsafe-ma = <800>;/*for p890a12/13 as ibat_max*/
+	qcom,thermal-mitigation = <1440 500 400 0>;
 	qcom,cool-bat-decidegc = <100>;
 	qcom,warm-bat-decidegc = <450>;
-	qcom,hot-bat-decidegc = <500>;
 	qcom,cool-bat-mv = <4100>;
 	qcom,warm-bat-mv = <4100>;
 	qcom,ibatmax-warm-ma = <500>;
@@ -170,7 +172,7 @@
 };
 
 &pm8909_vib {
-	qcom,vib-vtg-level-mV = <3100>;
+	qcom,vib-vtg-level-mV = <2700>;
 };
 
 &spmi_bus {

@@ -24,10 +24,19 @@
 
 / {
 	qrd_batterydata: qcom,battery-data {
-		qcom,rpull-up-kohm = <0>;
+		qcom,rpull-up-kohm = <100000>;
 		qcom,vref-batt-therm = <1800000>;
 
 		#include "zte-batterydata-2035mAh.dtsi"
+	};
+};
+
+/ {
+	qrd_batterydata_byd: qcom,battery-data-one {
+		qcom,rpull-up-kohm = <100000>;
+		qcom,vref-batt-therm = <1800000>;
+
+		#include "zte-batterydata-2035mAh-weike.dtsi"
 	};
 };
 
@@ -78,7 +87,7 @@
 		qcom,force-s3-on-suspend;
 		qcom,force-s2-in-charging;
 		qcom,report-charger-eoc;
-		qcom,resume-soc = <96>;
+		qcom,resume-soc = <97>;
 		qcom,use-reported-soc;
 		qcom,use-poweroff-soc;
 	};

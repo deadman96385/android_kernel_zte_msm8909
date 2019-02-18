@@ -12,7 +12,7 @@
 /* The file is copy from batterydata-qrd-4v35-2520mah.dtsi */
 
 qcom,ZTE2600-batterydata {
-	qcom,battery-type = "ZTE2600";
+	qcom,battery-type = "ZTE2600_98P2_90";
 	qcom,batt-id-kohm = <10>;
 	qcom,chg-term-ua = <78000>;
 	qcom,default-rbatt-mohm = <112>;
@@ -47,8 +47,8 @@ qcom,ZTE2600-batterydata {
 					<10 9 8 7 6>,
 					<5 4 3 2 1>,
 					<0>;
-		qcom,lut-data = <4396 4392 4385 4380 4374>,
-				<4304 4320 4318 4314 4308>,
+		qcom,lut-data = <4316 4312 4306 4301 4295>,
+				<4260 4276 4274 4270 4264>,
 				<4233 4259 4257 4254 4249>,
 				<4170 4199 4198 4196 4190>,
 				<4107 4140 4141 4138 4134>,

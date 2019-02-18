@@ -28,11 +28,11 @@
 	zte,warm_recharge-thresh-mv = <50>;
 	zte,vbatdet-max-err-mv = <20>;
 	zte,charging-timeout = <12>;
-	zte,input_voltage_mv = <4520>;
+	zte,input_voltage_mv = <4600>;
 	zte,max_usb_current = <1000>;
 	zte,max_battery_current = <1536>;
 	zte,thermal-mitigation = <1500 1000 900 500 0>;
-	zte,warm_bat_mv = <4100>;
+	zte,warm_bat_mv = <4200>;
 	zte,cool_bat_mv = <4352>;
 	zte,warm-bat-decidegc = <440>;
 	zte,cool-bat-decidegc = <100>;

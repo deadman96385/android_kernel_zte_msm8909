@@ -2,6 +2,7 @@
 #include "dsi-panel-zte-yushun-hsd-nt35512s-fwvga-video.dtsi"
 #include "dsi-panel-zte-dijing-hsd-ili9806e-fwvga-video.dtsi"
 #include "dsi-panel-zte-yassy-hx8379c-cpt-5p0-fwvga-video.dtsi"
+#include "dsi-panel-zte-liansi-boe-ili9806e-fwvga-video.dtsi"
 #include "dsi-panel-zte-helitai-hsd-otm8109a-fwvga-video.dtsi"
 #include "touch-key-backlight-jeff.dtsi"
 &dsi_fl10802_fwvga_video {
