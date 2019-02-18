@@ -178,6 +178,7 @@ static bool get_dload_mode(void)
 	return dload_mode_enabled;
 }
 
+#if 1
 static void enable_emergency_dload_mode(void)
 {
 	int ret;
@@ -202,6 +203,11 @@ static void enable_emergency_dload_mode(void)
 	if (ret)
 		pr_err("Failed to set secure EDLOAD mode: %d\n", ret);
 }
+#else
+static void enable_emergency_dload_mode(void)
+{
+}
+#endif
 
 static int dload_set(const char *val, struct kernel_param *kp)
 {
@@ -455,6 +461,7 @@ static void do_msm_restart(enum reboot_mode reboot_mode, const char *cmd)
 	mdelay(10000);
 }
 
+extern int battery_switch_enable(void);
 static void do_msm_poweroff(void)
 {
 	int ret;
@@ -468,6 +475,12 @@ static void do_msm_poweroff(void)
 #if defined(CONFIG_MSM_DLOAD_MODE) && !defined(ZTE_FEATURE_TF_SECURITY_SYSTEM)
 	set_dload_mode(0);
 #endif
+
+	ret = battery_switch_enable();
+	if (ret != 0)
+		pr_info("battery switch not enable\n");
+	else
+		pr_info("battery switch enable\n");
 	qpnp_pon_system_pwr_off(PON_POWER_OFF_SHUTDOWN);
 	/* Needed to bypass debug image on some chips */
 	if (!is_scm_armv8())

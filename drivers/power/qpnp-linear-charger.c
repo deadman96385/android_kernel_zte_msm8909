@@ -217,6 +217,8 @@ static enum power_supply_property msm_batt_power_props[] = {
 	POWER_SUPPLY_PROP_COOL_TEMP,
 	POWER_SUPPLY_PROP_WARM_TEMP,
 	POWER_SUPPLY_PROP_SYSTEM_TEMP_LEVEL,
+	POWER_SUPPLY_PROP_INPUT_CURRENT_MAX,
+	POWER_SUPPLY_PROP_SAFETY_TIMER_ENABLE,
 };
 
 enum {
@@ -373,6 +375,7 @@ struct qpnp_lbc_chip {
 	unsigned int			cfg_tchg_mins;
 	unsigned int			chg_failed_count;
 	unsigned int			supported_feature_flag;
+	int				safety_timer_enable;
 	int				cfg_bpd_detection;
 	int				cfg_warm_bat_decidegc;
 	int				cfg_cool_bat_decidegc;
@@ -417,6 +420,7 @@ struct qpnp_lbc_chip {
 	struct work_struct			poweroff_work;
 	struct delayed_work			update_heartbeat_work;
 	struct wake_lock			linear_charger_wake_lock;
+	int pmic_type;
 };
 struct qpnp_lbc_chip *the_qpnp_lbc_chip;
 
@@ -1022,6 +1026,37 @@ static int qpnp_lbc_vinmin_set(struct qpnp_lbc_chip *chip, int voltage)
 		pr_err("Failed to set VIN_MIN rc=%d\n", rc);
 
 	return rc;
+}
+
+#define BATTERY_VOL_MV 4200
+/* for PM8909, the register is 4362mv, for PM8916 the register is 4364mV */
+#define VINMIN_HIGH_4P2  4364
+#define VINMIN_HIGH_PM8916_4P2  4416
+#define VINMIN_LOW_4P2   4308
+static int zte_qpnp_lbc_vinmin_set(struct qpnp_lbc_chip *chip, int voltage)
+{
+	int rc = 0;
+
+	if (chip->cfg_min_voltage_mv != voltage) {
+		rc = qpnp_lbc_vinmin_set(chip, voltage);
+		if (rc) {
+			pr_err("Failed to set zte VIN_MIN rc=%d\n", rc);
+			return rc;
+		}
+		chip->cfg_min_voltage_mv = voltage;
+		pr_info("chip->cfg_min_voltage_mv = %d\n", chip->cfg_min_voltage_mv);
+	}
+	return rc;
+}
+
+static int zte_get_pmic_type(struct qpnp_lbc_chip *chip)
+{
+	u8 pmic_type;
+
+	spmi_ext_register_readl(chip->spmi->ctrl, 0, 0x105, &pmic_type, 1);
+
+	pr_info("pmic_type=%d\n", pmic_type);
+	return pmic_type;
 }
 
 #define QPNP_LBC_IBATSAFE_MIN_MA	90
@@ -1661,6 +1696,7 @@ static int qpnp_batt_property_is_writeable(struct power_supply *psy,
 	case POWER_SUPPLY_PROP_VOLTAGE_MIN:
 	case POWER_SUPPLY_PROP_WARM_TEMP:
 	case POWER_SUPPLY_PROP_SYSTEM_TEMP_LEVEL:
+	case POWER_SUPPLY_PROP_SAFETY_TIMER_ENABLE:
 		return 1;
 	default:
 		break;
@@ -1776,6 +1812,9 @@ static int qpnp_batt_power_set_property(struct power_supply *psy,
 	case POWER_SUPPLY_PROP_SYSTEM_TEMP_LEVEL:
 		qpnp_lbc_system_temp_level_set(chip, val->intval);
 		break;
+	case POWER_SUPPLY_PROP_SAFETY_TIMER_ENABLE:
+		chip->safety_timer_enable = val->intval;
+		break;
 	default:
 		return -EINVAL;
 	}
@@ -1836,6 +1875,12 @@ static int qpnp_batt_power_get_property(struct power_supply *psy,
 		break;
 	case POWER_SUPPLY_PROP_TECHNOLOGY:
 		val->intval = POWER_SUPPLY_TECHNOLOGY_LION;
+		break;
+	case POWER_SUPPLY_PROP_INPUT_CURRENT_MAX:
+		val->intval = chip->cfg_safe_current;
+		break;
+	case POWER_SUPPLY_PROP_SAFETY_TIMER_ENABLE:
+		val->intval = chip->safety_timer_enable;
 		break;
 	default:
 		return -EINVAL;
@@ -1993,7 +2038,8 @@ static int qpnp_lbc_parallel_get_property(struct power_supply *psy,
 }
 
 
-#if defined(CONFIG_BOARD_KELLY)
+#if defined(CONFIG_BOARD_KELLY) || defined(CONFIG_BOARD_LEWIS) || defined(CONFIG_BOARD_CALBEE) \
+	|| defined(CONFIG_BOARD_LOFT)
 
 static void update_temp_state(struct qpnp_lbc_chip *chip)
 {
@@ -2638,6 +2684,8 @@ static int qpnp_charger_read_dt_props(struct qpnp_lbc_chip *chip)
 		}
 	}
 
+	chip->safety_timer_enable = 1;
+
 	pr_debug("vddmax-mv=%d, vddsafe-mv=%d, vinmin-mv=%d, ibatsafe-ma=$=%d\n",
 			chip->cfg_max_voltage_mv,
 			chip->cfg_safe_voltage_mv,
@@ -2683,6 +2731,8 @@ static irqreturn_t qpnp_lbc_chg_gone_irq_handler(int irq, void *_chip)
 	struct qpnp_lbc_chip *chip = _chip;
 	int chg_gone;
 
+	pr_info("chg-gone triggered\n");
+	wake_lock_timeout(&chip->linear_charger_wake_lock, 5 * HZ);
 	if (chip->cfg_collapsible_chgr_support) {
 		chg_gone = qpnp_lbc_is_chg_gone(chip);
 		pr_debug("chg-gone triggered, rt_sts: %d\n", chg_gone);
@@ -2717,7 +2767,7 @@ static irqreturn_t qpnp_lbc_usbin_valid_irq_handler(int irq, void *_chip)
 	unsigned long flags;
 
 	usb_present = qpnp_lbc_is_usb_chg_plugged_in(chip);
-	pr_debug("usbin-valid triggered: %d\n", usb_present);
+	pr_info("usbin-valid triggered: %d\n", usb_present);
 
 	/*poweroff when removing USB-charger in poweroff mode*/
 	if (socinfo_get_charging_flag() && !usb_present) {
@@ -2768,7 +2818,7 @@ static irqreturn_t qpnp_lbc_usbin_valid_irq_handler(int irq, void *_chip)
 			qpnp_lbc_charger_enable(chip, SOC, 1);
 		}
 
-		pr_debug("Updating usb_psy PRESENT property\n");
+		pr_info("Updating usb_psy PRESENT property\n");
 		power_supply_set_present(chip->usb_psy, chip->usb_present);
 	}
 
@@ -3119,10 +3169,21 @@ static void update_heartbeat(struct work_struct *work)
 	health	  = get_prop_batt_health(chip);
 	usb_pres  = chip->usb_present;
 
-	if (cap == 100) {
+	if (cap == 100 || !chip->safety_timer_enable) {
 		chip->chg_failed_count = 0;
 		qpnp_lbc_charger_enable(chip, USER, 1);
 	}
+
+	pr_info("zty_debug the value is %d\n", chip->safety_timer_enable);
+
+	if (vol > BATTERY_VOL_MV) {
+		if (chip->pmic_type == 11) /* REVID_SUBTYPE value 11 is PM8916, 13 is pm8909*/
+			zte_qpnp_lbc_vinmin_set(chip, VINMIN_HIGH_PM8916_4P2);
+		else
+			zte_qpnp_lbc_vinmin_set(chip, VINMIN_HIGH_4P2);
+	}
+	else
+		zte_qpnp_lbc_vinmin_set(chip, VINMIN_LOW_4P2);
 
 	/*if heatbeat_ms is bigger than 500ms, it means users need this information, must output the logs directly.*/
 	if ((heartbeat_ms >= 500) || (abs(temp-old_temp) >= 1)
@@ -3599,6 +3660,36 @@ static int qpnp_lbc_parallel_probe(struct spmi_device *spmi)
 	return 0;
 }
 
+int zte_get_design_warm_current(void)
+{
+	return the_qpnp_lbc_chip->cfg_warm_bat_chg_ma;
+}
+
+int zte_get_design_cool_current(void)
+{
+	return the_qpnp_lbc_chip->cfg_cool_bat_chg_ma;
+}
+
+int zte_get_design_warm_voltage(void)
+{
+	return the_qpnp_lbc_chip->cfg_warm_bat_mv;
+}
+
+int zte_get_design_cool_voltage(void)
+{
+	return the_qpnp_lbc_chip->cfg_cool_bat_mv;
+}
+
+int zte_get_design_battery_hot_precentage(void)
+{
+	return the_qpnp_lbc_chip->cfg_hot_batt_p;
+}
+
+int zte_get_design_battery_cold_precentage(void)
+{
+	return the_qpnp_lbc_chip->cfg_cold_batt_p;
+}
+
 static int qpnp_lbc_main_probe(struct spmi_device *spmi)
 {
 	ktime_t kt;
@@ -3803,6 +3894,7 @@ static int qpnp_lbc_main_probe(struct spmi_device *spmi)
 	/*poweroff when removing USB-charger in poweroff mode*/
 	if (socinfo_get_charging_flag() && !chip->usb_present)
 		schedule_work(&chip->poweroff_work);
+	chip->pmic_type = zte_get_pmic_type(chip);
 
 	INIT_DELAYED_WORK(&chip->update_heartbeat_work, update_heartbeat);
 	schedule_delayed_work(&chip->update_heartbeat_work, 0);

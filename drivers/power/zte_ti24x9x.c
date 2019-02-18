@@ -631,6 +631,12 @@ static enum power_supply_property ti2419x_battery_properties[] = {
 	POWER_SUPPLY_PROP_TECHNOLOGY,
 	POWER_SUPPLY_PROP_VOLTAGE_MAX_DESIGN,
 	POWER_SUPPLY_PROP_VOLTAGE_MIN_DESIGN,
+	POWER_SUPPLY_PROP_INPUT_CURRENT_MAX,
+	POWER_SUPPLY_PROP_WARM_TEMP,
+	POWER_SUPPLY_PROP_COOL_TEMP,
+#if defined(CONFIG_BOARD_SWEET)
+	POWER_SUPPLY_PROP_BATTERY_HEALTH,
+#endif
 
 };
 
@@ -752,7 +758,6 @@ static int ti2419x_get_prop_batt_bms_fcc(struct ti2419x_chip *chip)
 	}
 	return DEFAULT_FCC;
 }
-
 
 static int ti2419x_get_prop_batt_status(struct ti2419x_chip *chip)
 {
@@ -1295,6 +1300,9 @@ static int ti2419x_battery_get_property(struct power_supply *psy,
 
 	switch (prop) {
 	case POWER_SUPPLY_PROP_HEALTH:
+#if defined(CONFIG_BOARD_SWEET)
+	case POWER_SUPPLY_PROP_BATTERY_HEALTH:
+#endif
 		val->intval = ti2419x_get_prop_batt_health(chip);
 		break;
 	case POWER_SUPPLY_PROP_PRESENT:
@@ -1346,6 +1354,15 @@ static int ti2419x_battery_get_property(struct power_supply *psy,
 		break;
 	case POWER_SUPPLY_PROP_VOLTAGE_MIN_DESIGN:
 		val->intval = CFG_MIN_VOLTAGE_UV;
+		break;
+	case POWER_SUPPLY_PROP_INPUT_CURRENT_MAX:
+		val->intval = chip->max_iusb;
+		break;
+	case POWER_SUPPLY_PROP_WARM_TEMP:
+		val->intval = chip->warm_bat_decidegc;
+		break;
+	case POWER_SUPPLY_PROP_COOL_TEMP:
+		val->intval = chip->cool_bat_decidegc;
 		break;
 	default:
 		return -EINVAL;
@@ -1470,15 +1487,15 @@ static int power_good_handler(struct ti2419x_chip *chip, u8 rt_stat)
 		} else if ((chip->tm_state == TI_TEMP_WARM_STATE)
 				|| (chip->tm_state == TI_TEMP_COOL_STATE)) {
 			smb23x_charge_current_limit(chip);
-		} else {
-			wake_lock(&chip->charger_valid_lock);
+		}
+		wake_lock(&chip->charger_valid_lock);
 
 #ifdef CONFIG_TOUCHSCREEN_SYNAPTICS_DSX_I2C
-			syna_ts_notifier_call_chain(1);
+		syna_ts_notifier_call_chain(1);
 #endif
-			cancel_delayed_work_sync(&chip->charger_eoc_work);	 /* stop charger_eoc_work. */
-			schedule_delayed_work(&chip->charger_eoc_work, round_jiffies_relative(msecs_to_jiffies(2000)));
-		}
+		cancel_delayed_work_sync(&chip->charger_eoc_work);	 /* stop charger_eoc_work. */
+		schedule_delayed_work(&chip->charger_eoc_work, round_jiffies_relative(msecs_to_jiffies(2000)));
+
 	}
 
 	chip->usb_present = usb_present;
@@ -2531,6 +2548,8 @@ static void force_power_off_check(int capacity)
 
 #define LOW_SOC_HEARTBEAT_MS  20000
 #define HEARTBEAT_MS		  60000
+#define VINDPM_MV		4600
+#define VOLTAGE_THRESHOLD	4200
 static void update_heartbeat(struct work_struct *work)
 {
 	struct delayed_work *dwork = to_delayed_work(work);
@@ -2625,13 +2644,13 @@ static void update_heartbeat(struct work_struct *work)
 	batt_psy = power_supply_get_by_name("battery");
 
 	if (batt_psy) {
-		pr_debug("The batt_psy is done.\n");
+		pr_info("The batt_psy is done.\n");
 	} else {
 		pr_err("The batt_psy is NULL\n");
 	}
 
 	if (get_store_mode()) {
-		pr_debug("Enter store mode and the cap is %d\n", cap);
+		pr_info("Enter store mode and the cap is %d\n", cap);
 		if (cap < 30) {
 			rc = batt_psy->set_property(batt_psy,
 					POWER_SUPPLY_PROP_CHARGING_ENABLED, &enable);
@@ -2646,9 +2665,15 @@ static void update_heartbeat(struct work_struct *work)
 	} else {
 		rc = batt_psy->set_property(batt_psy,
 				POWER_SUPPLY_PROP_CHARGING_ENABLED, &enable);
-		pr_debug("Do not  enter store_mode.\n");
+		pr_info("Do not  enter store_mode.\n");
 	}
 #endif
+
+	if (voltage >= VOLTAGE_THRESHOLD) {
+		set_input_voltage(chip, VINDPM_MV);
+	} else {
+		set_input_voltage(chip, chip->max_input_voltage);
+	}
 
 	/*if heatbeat_ms is bigger than 500ms, it means users need this information, must output the logs directly.*/
 	if ((heartbeat_ms >= 500) || (abs(temp-old_temp) >= 1)
@@ -3423,6 +3448,36 @@ int schedule_update_heartbeat_work(void)
 	return 0;
 }
 #endif
+
+int zte_get_design_warm_current(void)
+{
+	return the_ti2419x_chip->warm_bat_chg_ma;
+}
+
+int zte_get_design_cool_current(void)
+{
+	return the_ti2419x_chip->cool_bat_chg_ma;
+}
+
+int zte_get_design_warm_voltage(void)
+{
+	return the_ti2419x_chip->warm_bat_mv;
+}
+
+int zte_get_design_cool_voltage(void)
+{
+	return the_ti2419x_chip->cool_bat_mv;
+}
+
+int zte_get_design_battery_hot_precentage(void)
+{
+	return the_ti2419x_chip->hot_batt_p;
+}
+
+int zte_get_design_battery_cold_precentage(void)
+{
+	return the_ti2419x_chip->cold_batt_p;
+}
 
 static int ti2419x_probe(struct i2c_client *client,
 				const struct i2c_device_id *id)

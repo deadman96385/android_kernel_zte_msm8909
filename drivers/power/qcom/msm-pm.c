@@ -481,14 +481,11 @@ EXPORT_SYMBOL(free_gpio_buffer);
 #endif
 /*ZTE_PM ---- GPIO*/
 
-/*ZTE_PM ++++ Ap sleep and aweak*/
 #ifndef ZTE_PM_NOTIFY_MODEM_APP_SUSPENDED
-/*#define ZTE_PM_NOTIFY_MODEM_APP_SUSPENDED*/
+#define ZTE_PM_NOTIFY_MODEM_APP_SUSPENDED
 #endif
 
-#ifdef ZTE_PM_NOTIFY_MODEM_APP_SUSPENDED
-static zte_smem_global *zte_global;
-#endif
+
 
 #ifndef RECORD_APP_AWAKE_SUSPEND_TIME_ZTE
 #define RECORD_APP_AWAKE_SUSPEND_TIME_ZTE
@@ -809,6 +806,18 @@ void record_sleep_awake_time(bool record_sleep_awake)
 	}
 
 	amss_current_sleep_or_awake_previous = amss_current_sleep_or_awake;
+#ifdef ZTE_PM_NOTIFY_MODEM_APP_SUSPENDED
+	/*ZTE_PM: called after exit PowerCollapse from suspend,
+	which will inform modem app has exit suspend.*/
+	if (zte_imem_ptr) {
+		if (record_sleep_awake) {/*true?sleep:resume*/
+			zte_imem_ptr->app_suspend_state = 0xAA;
+		} else {
+			zte_imem_ptr->app_suspend_state = 0;
+			pr_info("PM notify app resume\n");
+		}
+	}
+#endif
 }
 #endif
 
@@ -840,29 +849,12 @@ void zte_pm_before_powercollapse(void)
 	} while (0);
 #endif
 
-#ifdef ZTE_PM_NOTIFY_MODEM_APP_SUSPENDED
-		if (zte_global == NULL) {
-			zte_global = ioremap(ZTE_SMEM_LOG_GLOBAL_BASE, sizeof(zte_smem_global));
-		}
-		if (zte_global) {
-			zte_global->app_suspend_state = 0xAA;
-		}
-#endif
 
 #ifdef RECORD_APP_AWAKE_SUSPEND_TIME_ZTE
 		record_sleep_awake_time(true);
 #endif
 }
 
-/*ZTE_PM: called after exit PowerCollapse from suspend,
-which will inform modem app has exit suspend.*/
-void zte_pm_after_powercollapse(void)
-{
-#ifdef ZTE_PM_NOTIFY_MODEM_APP_SUSPENDED
-	if (zte_global)
-		zte_global->app_suspend_state = 0;
-#endif
-}
 
 /**
  * msm_cpu_pm_enter_sleep(): Enter a low power mode on current cpu
@@ -914,9 +906,6 @@ bool zte_msm_cpu_pm_enter_sleep(enum msm_pm_sleep_mode mode, bool from_idle)
 	if (execute[mode])
 		exit_stat = execute[mode](from_idle);
 
-	/*ZTE:exit PC from suspend,need to record*/
-	if ((mode == MSM_PM_SLEEP_MODE_POWER_COLLAPSE) && (!from_idle))
-		zte_pm_after_powercollapse();
 
 	return exit_stat;
 }
@@ -1369,9 +1358,10 @@ skip_save_imem:
 
 /*ZTE_PM ++++*/
 #ifdef ZTE_PM_NOTIFY_MODEM_APP_SUSPENDED
-	zte_global = ioremap(ZTE_SMEM_LOG_GLOBAL_BASE, sizeof(zte_smem_global));
-	if (zte_global)
-		zte_global->app_suspend_state = 0;
+	if (zte_imem_ptr) {
+		zte_imem_ptr->app_suspend_state = 0;
+		pr_info("PM notify app resume when init");
+	}
 #endif
 
 #if 0

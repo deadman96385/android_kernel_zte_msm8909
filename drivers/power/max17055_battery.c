@@ -70,10 +70,12 @@
 #define MAX17055_SOC_ROUND_THD		0x5000		/* 80% */
 #define MAX17055_IC_VERSION_A		0x4000
 #define MAX17055_IC_VERSION_B		0x4010
-#define MAX17055_DRIVER_VERSION		0x1060
-#define MAX17055_DRIVER_VERSION_GY	0x2060
+#define MAX17055_DRIVER_VERSION		0x1062
+#define MAX17055_DRIVER_VERSION_LG	0x2062
 
 #define MAX17055_BATT_ID_ATL		(0x01)
+#define BATTERY_VALUE			500000
+#define BATTERY_VALUE_LG		1300000
 
 struct max17055_chip {
 	struct i2c_client *client;
@@ -1141,7 +1143,7 @@ max17055_get_pdata(struct max17055_chip *chip)
 			of_property_read_u16_array(np, "maxim,config-data",
 				(u16 *)pdata->config_data, sizeof(*(pdata->config_data))/sizeof(u16));
 		} else {
-			of_property_read_u16_array(np, "maxim,config-data-gy",
+			of_property_read_u16_array(np, "maxim,config-data-lg",
 				(u16 *)pdata->config_data, sizeof(*(pdata->config_data))/sizeof(u16));
 		}
 		/*for (i = 0; i < sizeof(*(pdata->config_data))/sizeof(u16); i++)
@@ -1287,10 +1289,13 @@ static int max17055_probe(struct i2c_client *client,
 		return rc;
 	}
 
-	if (read_battery_id(chip) < 50000)
-		chip->version = MAX17055_DRIVER_VERSION_GY;
-	else
+	if (read_battery_id(chip) < BATTERY_VALUE) {
 		chip->version = MAX17055_DRIVER_VERSION;
+	} else if ((read_battery_id(chip) >= BATTERY_VALUE) && (read_battery_id(chip) < BATTERY_VALUE_LG)) {
+		chip->version = MAX17055_DRIVER_VERSION_LG;
+	} else if (read_battery_id(chip) >= BATTERY_VALUE_LG) {
+		chip->version = MAX17055_DRIVER_VERSION;
+	}
 
 	chip->regmap = devm_regmap_init_i2c(client, &max17055_regmap_config);
 	if (IS_ERR(chip->regmap)) {

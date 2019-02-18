@@ -38,6 +38,7 @@
 #include <linux/batterydata-interface.h>
 #include <linux/qpnp-revid.h>
 #include <uapi/linux/vm_bms.h>
+#include <soc/qcom/socinfo.h>
 
 #define ZTE_CHG_BATTERY_CAPCITY_CORRECT
 #define _BMS_MASK(BITS, POS) \
@@ -124,6 +125,9 @@
 #define MIN_SOC_UUC			3
 #define BATTERY_ID_VALUE		800000
 #define BATTERY_ID_KELLY_VALUE		635000
+#define BATTERY_ID_JEFF_VALUE		884000
+#define BATTERY_ID_SAPPHIRE_VALUE		693500
+#define BATTERY_ID_SAPPHIRE4G_VALUE 1062500
 
 #define QPNP_VM_BMS_DEV_NAME		"qcom,qpnp-vm-bms"
 
@@ -429,7 +433,7 @@ static int backup_ocv_soc(struct qpnp_bms_chip *chip, int ocv_uv, int soc)
 	if (rc)
 		pr_err("Unable to backup SOC rc=%d\n", rc);
 
-	pr_debug("ocv_mv=%d soc=%d\n", ocv_mv, soc);
+	pr_info("ocv_mv=%d soc=%d\n", ocv_mv, soc);
 
 	return rc;
 }
@@ -956,10 +960,12 @@ static int adjust_uuc(struct qpnp_bms_chip *chip, int soc_uuc)
 	return chip->prev_soc_uuc;
 }
 
+#define COMENSATE_IAVG_CURRENT_COEFFICIENT 10
 static int lookup_soc_ocv(struct qpnp_bms_chip *chip, int ocv_uv, int batt_temp)
 {
 	int soc_ocv = 0, soc_cutoff = 0, soc_final = 0;
 	int fcc, acc, soc_uuc = 0, soc_acc = 0, iavg_ma = 0;
+	int compensate_current;
 
 	soc_ocv = interpolate_pc(chip->batt_data->pc_temp_ocv_lut,
 					batt_temp, ocv_uv / 1000);
@@ -982,6 +988,12 @@ static int lookup_soc_ocv(struct qpnp_bms_chip *chip, int ocv_uv, int batt_temp)
 			else
 				iavg_ma = chip->current_now / 1000;
 
+			if (soc_ocv <= 15) {
+				compensate_current = soc_ocv * COMENSATE_IAVG_CURRENT_COEFFICIENT;
+				if (iavg_ma > compensate_current) {
+					iavg_ma = iavg_ma - compensate_current;
+				}
+			}
 			fcc = interpolate_fcc(chip->batt_data->fcc_temp_lut,
 								batt_temp);
 			acc = interpolate_acc(chip->batt_data->ibat_acc_lut,
@@ -1425,7 +1437,7 @@ static int report_eoc(struct qpnp_bms_chip *chip)
 		if (rc) {
 			pr_err("Unable to get battery 'STATUS' rc=%d\n", rc);
 		} else if (ret.intval != POWER_SUPPLY_STATUS_FULL) {
-			pr_debug("Report EOC to charger\n");
+			pr_info("Report EOC to charger\n");
 			ret.intval = POWER_SUPPLY_STATUS_FULL;
 			rc = chip->batt_psy->set_property(chip->batt_psy,
 					POWER_SUPPLY_PROP_STATUS, &ret);
@@ -1503,7 +1515,13 @@ static void check_eoc_condition(struct qpnp_bms_chip *chip)
 #if defined(CONFIG_BOARD_ELDEN)
 		if ((chip->last_soc == 100) && (ocv_now > (chip->dt.cfg_max_voltage_uv - 20000))) {
 #else
+		#if defined(CONFIG_BOARD_CALBEE)
+		if ((chip->last_soc == 100) && (ocv_now >= (chip->dt.cfg_max_voltage_uv - 99000))) {
+		#elif defined(CONFIG_BOARD_SWEET)
+		if ((chip->last_soc == 100) && (ocv_now > (chip->dt.cfg_max_voltage_uv - 50000))) {
+		#else
 		if ((chip->last_soc == 100) && (ocv_now >= (chip->dt.cfg_max_voltage_uv))) {
+		#endif
 #endif
 			full_count = full_count + 1;
 			if (full_count >= 5) {
@@ -1515,7 +1533,7 @@ static void check_eoc_condition(struct qpnp_bms_chip *chip)
 						 * reported successfully.
 						 */
 						chip->ocv_at_100 = chip->last_ocv_uv;
-						pr_debug("Battery FULL\n");
+						pr_info("Battery FULL\n");
 					} else {
 						pr_err("Unable to report eoc rc=%d\n",
 								rc);
@@ -1601,7 +1619,7 @@ static int prepare_reported_soc(struct qpnp_bms_chip *chip)
 					chip->reported_soc, chip->last_soc);
 	return chip->reported_soc;
 }
-static int poweroff_capacity = 0;
+static int poweroff_capacity = -1;
 static int set_poweroff_capacity(const char *val, struct kernel_param *kp)
 {
 	int ret;
@@ -1617,7 +1635,7 @@ static int set_poweroff_capacity(const char *val, struct kernel_param *kp)
 module_param_call(poweroff_capacity, set_poweroff_capacity, param_get_uint,
 					&poweroff_capacity, 0644);
 
-static int poweroff_voltage = 0;
+static int poweroff_voltage = -1;
 static int set_poweroff_voltage(const char *val, struct kernel_param *kp)
 {
 	int ret;
@@ -1627,7 +1645,7 @@ static int set_poweroff_voltage(const char *val, struct kernel_param *kp)
 		pr_err("error setting value %d\n", ret);
 		return ret;
 	}
-	pr_info("poweroff_capacity to %d\n", poweroff_voltage);
+	pr_info("poweroff_voltage to %d\n", poweroff_voltage);
 	return 0;
 }
 module_param_call(poweroff_voltage, set_poweroff_voltage, param_get_uint,
@@ -1645,6 +1663,8 @@ static int report_vm_bms_soc(struct qpnp_bms_chip *chip)
 	unsigned long last_change_sec;
 	bool charging;
 	int voltage_now;
+	int poweroff_capacity_temp;
+	bool poweroff_vol_cap_is_valid = 0;
 
 	soc = chip->calculated_soc;
 
@@ -1757,20 +1777,27 @@ static int report_vm_bms_soc(struct qpnp_bms_chip *chip)
 		if ((chip->dt.cfg_soc_resume_limit > 0) && !charging)
 			check_recharge_condition(chip);
 	}
-
-	if (chip->dt.cfg_use_poweroff_soc && (poweroff_voltage >= 0)) {
-		get_battery_voltage(chip, &voltage_now);
-		voltage_now = voltage_now / 1000;
-		pr_debug("voltage_now:%d,poweroff_voltage:%d,poweroff_capacity:%d,chip->dt.cfg_use_poweroff_soc:%d\n",
-			voltage_now,poweroff_voltage,poweroff_capacity,chip->dt.cfg_use_poweroff_soc);
-		if (poweroff_voltage > 0) {
-			chip->dt.cfg_use_poweroff_soc = false;
-			if (abs(voltage_now - poweroff_voltage) < 250) {
-				chip->last_soc = poweroff_capacity;
+	if ((socinfo_get_pv_flag() == 1) || (socinfo_get_ftm_flag() == 1)) {
+		pr_info("In pv/ftm mode and Disable recording capacity.\n");
+	} else {
+		if (chip->dt.cfg_use_poweroff_soc && (poweroff_voltage != -1)) {
+			get_battery_voltage(chip, &voltage_now);
+			voltage_now = voltage_now / 1000;
+			pr_info("voltage_now:%d,poweroff_voltage:%d,poweroff_capacity:%d,chip->dt.cfg_use_poweroff_soc:%d\n",
+				voltage_now, poweroff_voltage, poweroff_capacity, chip->dt.cfg_use_poweroff_soc);
+			if (poweroff_voltage != -1 && poweroff_capacity != -1) {
+				chip->dt.cfg_use_poweroff_soc = false;
+				/* recheck the poweroff voltage and capacity is valid,the abs diff is 50% */
+				poweroff_capacity_temp = lookup_soc_ocv(chip, poweroff_voltage*1000, batt_temp);
+				poweroff_vol_cap_is_valid = abs(poweroff_capacity_temp - poweroff_capacity) < 50 ? 1:0;
+				pr_info("chip->dt.cfg_use_poweroff_soc:%d, poweroff_vol_cap_is_valid = %d\n",
+					chip->dt.cfg_use_poweroff_soc, poweroff_vol_cap_is_valid);
+				if (abs(voltage_now - poweroff_voltage) < 250
+					&& poweroff_vol_cap_is_valid && chip->shutdown_soc_invalid) {
+					chip->last_soc = poweroff_capacity;
+				}
 			}
 		}
-	} else {
-		chip->dt.cfg_use_poweroff_soc = false;;
 	}
 	pr_debug("last_soc=%d calculated_soc=%d soc=%d time_since_last_change=%d\n",
 			chip->last_soc, chip->calculated_soc,
@@ -1837,7 +1864,7 @@ static int zte_correct_soc_for_nearly_fully_charged_battery(struct qpnp_bms_chip
 			last_change_time.tv_sec = ts->tv_sec;
 	}
 	last_soc = soc;
-	pr_debug("soc=%d, last_returned_soc=%d\n", soc, last_returned_soc);
+	pr_info("soc=%d, last_returned_soc=%d\n", soc, last_returned_soc);
 	return last_returned_soc;
 }
 /*Description:  1)Sometimes the charging current is less than the terminal current, but capacity is less than 100%,
@@ -1894,15 +1921,16 @@ static int zte_chg_capacity_filter(struct qpnp_bms_chip *chip, int percent_soc)
 		ztefilterP->pre_change_ts.tv_sec = ts.tv_sec;
 	 }
 	 soc = zte_correct_soc_for_nearly_fully_charged_battery(chip, soc, &ts);
+	 pr_info("ztefilterP->soc = %d, soc =%d\n", ztefilterP->soc, soc);
 	if (ztefilterP->soc != soc) {
-		pr_debug("(ts.ts_sec - pre_change_ts.ts_sec)=%ld\n", (ts.tv_sec - ztefilterP->pre_change_ts.tv_sec));
+		pr_info("(ts.ts_sec - pre_change_ts.ts_sec)=%ld\n", (ts.tv_sec - ztefilterP->pre_change_ts.tv_sec));
 		if ((ts.tv_sec - ztefilterP->pre_change_ts.tv_sec) > (soc > 60?60:(soc < 20?20:soc))) {
 			/*allow change 1 level every 5mins without charger, 1min with charger plugged in*/
 			if (is_battery_charging(chip))
 				allow_jump_len = (ts.tv_sec - ztefilterP->pre_change_ts.tv_sec)/60 + 1;
 			else
 				allow_jump_len = (ts.tv_sec - ztefilterP->pre_change_ts.tv_sec)/300 + 1;
-
+			pr_info("allow_jump_len = %d\n", allow_jump_len);
 			if (allow_jump_len <= 0)
 				allow_jump_len = 1;
 
@@ -1927,7 +1955,12 @@ static int zte_chg_capacity_filter(struct qpnp_bms_chip *chip, int percent_soc)
 	return ztefilterP->soc;
 }
 
-#ifndef CONFIG_BOARD_ELDEN
+#if defined(CONFIG_BOARD_ELDEN) || defined(CONFIG_BOARD_CALBEE)
+static int zte_chg_capacity_trans(struct qpnp_bms_chip *chip, int raw_soc)
+{
+	return raw_soc;
+}
+#else
 /* From the capacity enlarge, the capaciy have two jumps point, one is 33%, the trans_soc is 34%,
 there is no 33%, the function is process the battery jumps. another is 64%, the trans_soc is 65%,
 there is no 66% */
@@ -2052,15 +2085,12 @@ static int report_state_of_charge(struct qpnp_bms_chip *chip)
 		soc = report_vm_bms_soc(chip);
 
 	#ifdef ZTE_CHG_BATTERY_CAPCITY_CORRECT
-#if defined(CONFIG_BOARD_ELDEN)
-#else
 	soc = zte_chg_capacity_trans(chip, soc);
-#endif
 	zte_soc = zte_chg_capacity_filter(chip, soc);
 	#endif
 	mutex_unlock(&chip->last_soc_mutex);
-	pr_err("soc = %d, zte_soc = %d\n", soc, zte_soc);
-	return soc;
+	pr_err("soc = %d, zte_soc = %d, chip->last_soc = %d\n", soc, zte_soc, chip->last_soc);
+	return min(zte_soc, chip->last_soc);
 }
 
 static void btm_notify_vbat(enum qpnp_tm_state state, void *ctx)
@@ -3086,6 +3116,7 @@ static int read_shutdown_ocv_soc(struct qpnp_bms_chip *chip)
 	u8 stored_soc = 0;
 	u16 stored_ocv = 0;
 	int rc;
+	int est_ocv = 0;
 
 	rc = qpnp_read_wrapper(chip, (u8 *)&stored_ocv,
 				chip->base + BMS_OCV_REG, 2);
@@ -3126,6 +3157,18 @@ static int read_shutdown_ocv_soc(struct qpnp_bms_chip *chip)
 
 	pr_debug("shutdown_ocv=%d shutdown_soc=%d\n",
 			chip->shutdown_ocv, chip->shutdown_soc);
+
+	est_ocv = estimate_ocv(chip);
+	pr_info("zte Estimate OCV est_ocv = %d\n", est_ocv);
+	if (est_ocv <= 0) {
+		pr_err("Unable to estimate OCV rc=%d\n", est_ocv);
+	}
+	if (abs(est_ocv - chip->shutdown_ocv) > 500000) {
+		pr_info("zte shutdown OCV invalid\n");
+		chip->shutdown_soc = SOC_INVALID;
+		chip->shutdown_ocv = OCV_INVALID;
+		return -EINVAL;
+	}
 
 	return 0;
 }
@@ -3244,6 +3287,7 @@ static int calculate_initial_soc(struct qpnp_bms_chip *chip)
 		 /* !warm_reset use PON OCV only if shutdown SOC is invalid */
 		chip->calculated_soc = lookup_soc_ocv(chip,
 					chip->last_ocv_uv, batt_temp);
+		pr_info("chip->calculated_soc = %d\n", chip->calculated_soc);
 		if (!chip->shutdown_soc_invalid &&
 			(abs(chip->shutdown_soc - chip->calculated_soc) <
 				chip->dt.cfg_shutdown_soc_valid_limit)) {
@@ -3787,13 +3831,41 @@ static int set_battery_data(struct qpnp_bms_chip *chip)
 		node = of_find_node_by_name(chip->spmi->dev.of_node,
 				"qcom,battery-data-byd");
 	}
-#elif defined(CONFIG_BOARD_KELLY) || defined(CONFIG_BOARD_GRAYJOYLITE) || defined(CONFIG_BOARD_LEWIS)
+#elif defined(CONFIG_BOARD_KELLY) || defined(CONFIG_BOARD_GRAYJOYLITE) || defined(CONFIG_BOARD_LEWIS) \
+	|| defined(CONFIG_BOARD_LOFT)
 	if (battery_id < BATTERY_ID_KELLY_VALUE) {
 		node = of_find_node_by_name(chip->spmi->dev.of_node,
 				"qcom,battery-data");
 	} else {
 		node = of_find_node_by_name(chip->spmi->dev.of_node,
 				"qcom,battery-data-one");
+	}
+#elif defined(CONFIG_BOARD_JEFF) || defined(CONFIG_BOARD_DRACO)
+	if (battery_id < BATTERY_ID_JEFF_VALUE) {
+		node = of_find_node_by_name(chip->spmi->dev.of_node,
+				"qcom,battery-data");
+	} else {
+		node = of_find_node_by_name(chip->spmi->dev.of_node,
+				"qcom,battery-data-one");
+	}
+#elif defined(CONFIG_BOARD_SAPPHIRE)
+	if (battery_id < BATTERY_ID_SAPPHIRE_VALUE) {
+		node = of_find_node_by_name(chip->spmi->dev.of_node,
+				"qcom,battery-data");
+	} else {
+		node = of_find_node_by_name(chip->spmi->dev.of_node,
+				"qcom,battery-data-one");
+	}
+#elif defined(CONFIG_BOARD_SAPPHIRE4G)
+	if (battery_id < BATTERY_ID_SAPPHIRE_VALUE) {
+		node = of_find_node_by_name(chip->spmi->dev.of_node,
+				"qcom,battery-data");
+	} else if (battery_id < BATTERY_ID_SAPPHIRE4G_VALUE) {
+		node = of_find_node_by_name(chip->spmi->dev.of_node,
+				"qcom,battery-data-one");
+	} else {
+		node = of_find_node_by_name(chip->spmi->dev.of_node,
+				"qcom,battery-data-sec");
 	}
 #else
 	node = of_find_node_by_name(chip->spmi->dev.of_node,

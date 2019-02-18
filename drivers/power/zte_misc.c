@@ -32,6 +32,10 @@
 #define GPIO_CHG_EN		0
 #endif
 
+#if defined(CONFIG_BOARD_GEMI) || defined(CONFIG_BOARD_HELEN)
+#define ENABLE_SHOPPING_MODE	1
+#endif
+
 struct zte_gpio_info {
 	int sys_num;			/* system pin number */
 	const char *name;
@@ -94,10 +98,7 @@ static int get_devtree_pdata(struct device *dev)
 static int hw_ver_id_0_en = -1;
 static int hw_ver_id_1_en = -1;
 int	hw_version = -1;
-int zte_get_board_ver(void)
-{
-	return hw_version;
-}
+
 static int zte_hw_ver_init(void)
 {
 	int rc;
@@ -152,10 +153,11 @@ static int is_factory_mode = 0;
 static int gpio_batt_switch_en = -1;
 static int is_use_ti_internal_bs = 0;
 
-static int zte_batt_switch_init(void)
+static int zte_ship_mode_init(void)
 {
 	int rc;
 
+	pr_info("%s:zte_ship_mode_init.", __func__);
 	if (is_use_ti_internal_bs)
 		return 0;
 
@@ -176,11 +178,16 @@ static int zte_batt_switch_init(void)
  *				 and kept high for at least 1 ms
  * (2)TI charger internal battery switch controllled by I2C
 */
-/*extern int ti2419x_turn_off_battery_switch(void);*/
-static int zte_turn_off_batt_switch(void)
+
+#if defined(ENABLE_SHOPPING_MODE)
+extern int ti2419x_turn_off_battery_switch(void);
+#endif
+
+static int zte_turn_off_ship_mode(void)
 {
 	pr_info("%s:turning off battery switch...\n", __func__);
-#if 0
+
+#if defined(ENABLE_SHOPPING_MODE)
 	if (is_use_ti_internal_bs)
 		ti2419x_turn_off_battery_switch();
 	else{
@@ -189,10 +196,11 @@ static int zte_turn_off_batt_switch(void)
 		gpio_direction_output(gpio_batt_switch_en, 1);
 	}
 #endif
+
 	return 0;
 }
 
-static int poweroff_bs_set(const char *val, struct kernel_param *kp)
+static int ship_mode_set(const char *val, struct kernel_param *kp)
 {
 	int ret;
 
@@ -209,10 +217,10 @@ static int poweroff_bs_set(const char *val, struct kernel_param *kp)
 	if (poweroff_bs != 1)
 		return -ENODEV;
 
-	zte_turn_off_batt_switch();
+	zte_turn_off_ship_mode();
 	return 0;
 }
-module_param_call(poweroff_bs, poweroff_bs_set, NULL,
+module_param_call(poweroff_bs, ship_mode_set, NULL,
 			&poweroff_bs, 0644);
 
 static int factory_mode_set(const char *val, struct kernel_param *kp)
@@ -249,7 +257,7 @@ int battery_switch_enable(void)
 	if (!is_factory_mode)
 		return -ENODEV;
 
-	zte_turn_off_batt_switch();
+	zte_turn_off_ship_mode();
 
 	return 0;
 }
@@ -395,17 +403,107 @@ static int set_store_mode(const char *val, struct kernel_param *kp)
 
 	schedule_update_heartbeat_work();
 
-	pr_debug("The store_mode is %d\n", store_mode);
+	pr_info("The store_mode is %d\n", store_mode);
 	return 0;
 }
 module_param_call(store_mode, set_store_mode, param_get_int, &store_mode, 0644);
 
 int get_store_mode(void)
 {
-	pr_debug("Get_store_mode the store_mode is %d\n", store_mode);
+	pr_info("Get_store_mode the store_mode is %d\n", store_mode);
 	return store_mode;
 }
 #endif
+
+/*
+ *Set ibatmax-warm-ma(QCOM) / warm_bat_chg_ma(TI)
+ */
+extern int zte_get_design_warm_current(void);
+static int warm_current = 0;
+static int zte_misc_get_warm_current(char *val, struct kernel_param *kp)
+{
+	int zte_warm_current;
+
+	zte_warm_current = zte_get_design_warm_current();
+	pr_info("zte_misc_get_warm_current the value is %d\n", zte_warm_current);
+	return snprintf(val, CHARGER_BUF_SIZE, "%d", zte_warm_current);
+}
+module_param_call(warm_current, NULL, zte_misc_get_warm_current, &warm_current, 0644);
+
+/*
+ *Set ibatmax-cool-ma(QCOM) / cool_bat_chg_ma(TI)
+ */
+extern int zte_get_design_cool_current(void);
+static int cool_current = 0;
+static int zte_misc_get_cool_current(char *val, struct kernel_param *kp)
+{
+	int zte_cool_current;
+
+	zte_cool_current = zte_get_design_cool_current();
+	pr_info("zte_misc_get_cool_current the value is %d\n", zte_cool_current);
+	return snprintf(val, CHARGER_BUF_SIZE, "%d", zte_cool_current);
+}
+module_param_call(cool_current, NULL, zte_misc_get_cool_current, &cool_current, 0644);
+
+/*
+ *warm-bat-mv(QCOM) / warm_bat_mv(TI)
+ */
+extern int zte_get_design_warm_voltage(void);
+static int warm_voltage = 0;
+static int zte_misc_get_warm_voltage(char *val, struct kernel_param *kp)
+{
+	int zte_warm_voltage;
+
+	zte_warm_voltage = zte_get_design_warm_voltage();
+	pr_info("zte_misc_get_warm_voltage the value is %d\n", zte_warm_voltage);
+	return snprintf(val, CHARGER_BUF_SIZE, "%d", zte_warm_voltage);
+}
+module_param_call(warm_voltage, NULL, zte_misc_get_warm_voltage, &warm_voltage, 0644);
+
+/*
+ *Set cool-bat-mv(QCOM) / cool_bat_mv(TI)
+ */
+extern int zte_get_design_cool_voltage(void);
+static int cool_voltage = 0;
+static int zte_misc_get_cool_voltage(char *val, struct kernel_param *kp)
+{
+	int zte_cool_voltage;
+
+	zte_cool_voltage = zte_get_design_cool_voltage();
+	pr_info("zte_misc_get_cool_voltage the value is %d\n", zte_cool_voltage);
+	return snprintf(val, CHARGER_BUF_SIZE, "%d", zte_cool_voltage);
+}
+module_param_call(cool_voltage, NULL, zte_misc_get_cool_voltage, &cool_voltage, 0644);
+
+/*
+ *Set batt-hot-percentage(QCOM) / batt-hot-percentage(TI)
+ */
+extern int zte_get_design_battery_hot_precentage(void);
+static int hot_precentage = 0;
+static int zte_misc_get_hot_precentage(char *val, struct kernel_param *kp)
+{
+	int zte_hot_precentage;
+
+	zte_hot_precentage = zte_get_design_battery_hot_precentage();
+	pr_info("zte_misc_get_hot_precentage the value is %d\n", zte_hot_precentage);
+	return snprintf(val, CHARGER_BUF_SIZE, "%d", zte_hot_precentage);
+}
+module_param_call(hot_precentage, NULL, zte_misc_get_hot_precentage, &hot_precentage, 0644);
+
+/*
+ *Set batt-cold-percentage(QCOM) / batt-hot-percentage(TI)
+ */
+extern int zte_get_design_battery_cold_precentage(void);
+static int cold_precentage = 0;
+static int zte_misc_get_cold_precentage(char *val, struct kernel_param *kp)
+{
+	int zte_cold_precentage;
+
+	zte_cold_precentage = zte_get_design_battery_cold_precentage();
+	pr_info("zte_misc_get_cold_precentage the value is %d\n", zte_cold_precentage);
+	return snprintf(val, CHARGER_BUF_SIZE, "%d", zte_cold_precentage);
+}
+module_param_call(cold_precentage, NULL, zte_misc_get_cold_precentage, &cold_precentage, 0644);
 
 /* static int __devinit zte_misc_probe(struct platform_device *pdev) */
 static int zte_misc_probe(struct platform_device *pdev)
@@ -424,7 +522,7 @@ static int zte_misc_probe(struct platform_device *pdev)
 	is_use_ti_internal_bs = of_property_read_bool(node, "zte,use-ti-charger-internal-battery-switch");
 	pr_info("is_use_ti_internal_bs=%d\n", is_use_ti_internal_bs);
 
-	zte_batt_switch_init();
+	zte_ship_mode_init();
 
 #if defined(CONFIG_BOARD_CHAPEL)
 	zte_misc_chg_enable();
@@ -432,7 +530,7 @@ static int zte_misc_probe(struct platform_device *pdev)
 
 	zte_hw_ver_init();
 	hw_version = zte_get_hw_version();
-	zte_get_board_ver();
+
 	pr_info("%s ----\n", __func__);
 	return 0;
 }

@@ -696,6 +696,9 @@ static enum power_supply_property ti2419x_battery_properties[] = {
 	POWER_SUPPLY_PROP_TECHNOLOGY,
 	POWER_SUPPLY_PROP_VOLTAGE_MAX_DESIGN,
 	POWER_SUPPLY_PROP_VOLTAGE_MIN_DESIGN,
+	POWER_SUPPLY_PROP_INPUT_CURRENT_MAX,
+	POWER_SUPPLY_PROP_WARM_TEMP,
+	POWER_SUPPLY_PROP_COOL_TEMP,
 
 };
 
@@ -1449,6 +1452,15 @@ static int ti2419x_battery_get_property(struct power_supply *psy,
 		break;
 	case POWER_SUPPLY_PROP_VOLTAGE_MIN_DESIGN:
 		val->intval = CFG_MIN_VOLTAGE_UV;
+		break;
+	case POWER_SUPPLY_PROP_INPUT_CURRENT_MAX:
+		val->intval = chip->max_iusb;
+		break;
+	case POWER_SUPPLY_PROP_WARM_TEMP:
+		val->intval = chip->warm_bat_decidegc;
+		break;
+	case POWER_SUPPLY_PROP_COOL_TEMP:
+		val->intval = chip->cool_bat_decidegc;
 		break;
 	default:
 		return -EINVAL;
@@ -3552,6 +3564,36 @@ static struct power_supply *ti2419x_get_bms_psy(struct ti2419x_chip *chip)
 	}
 out:
 	return bms_psy;
+}
+
+int zte_get_design_warm_current(void)
+{
+	return the_ti2419x_chip->warm_bat_chg_ma;
+}
+
+int zte_get_design_cool_current(void)
+{
+	return the_ti2419x_chip->cool_bat_chg_ma;
+}
+
+int zte_get_design_warm_voltage(void)
+{
+	return the_ti2419x_chip->warm_bat_mv;
+}
+
+int zte_get_design_cool_voltage(void)
+{
+	return the_ti2419x_chip->cool_bat_mv;
+}
+
+int zte_get_design_battery_hot_precentage(void)
+{
+	return the_ti2419x_chip->hot_batt_p;
+}
+
+int zte_get_design_battery_cold_precentage(void)
+{
+	return the_ti2419x_chip->cold_batt_p;
 }
 
 static int ti2419x_probe(struct i2c_client *client,
