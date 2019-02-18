@@ -445,17 +445,11 @@ typedef enum {
 	AVC_ADBD_KERNEL               = 3,
 	AVC_UEVENTD_BLOCK_DEVICE      = 4,
 	AVC_UEVENTD_DEVPTS            = 5,
-	AVC_UEVENTD_FSCK_EXEC         = 6,
-	AVC_TEE_SYSTEM_DATA_FILE_DIR  = 7,
-	AVC_TEE_SYSTEM_DATA_FILE_FILE = 8,
-	AVC_FP_SYSTEM_DATA_FILE_DIR   = 9,
-	AVC_FP_SYSTEM_DATA_FILE_FILE  = 10,
-	AVC_SU_TEE_DEV_CHR_FILE       = 11,
-	AVC_VOLD_SELINUXFS            = 12,
-	AVC_VOLD_KERNEL               = 13,
-	AVC_GETLOG_DEBUGFS            = 14,
-	AVC_GETLOG_PROPERTIES_SERIAL  = 15,
-	AVC_GETLOG_SELF               = 16,
+	AVC_VOLD_SELINUXFS            = 6,
+	AVC_VOLD_KERNEL               = 7,
+	AVC_GETLOG_DEBUGFS            = 8,
+	AVC_GETLOG_PROPERTIES_SERIAL  = 9,
+	AVC_GETLOG_SELF               = 10,
 } pp_avc_desc_item_t;
 
 typedef enum {
@@ -573,76 +567,8 @@ static pp_avc_desc_t pp_avc_desc_list[] = {
 		.op        = OP_MOD | OP_UNMOD,
 	},
 
-	/* avc policy: allow ueventd fsck_exec:file { open read execute execute_no_trans } */
-	[AVC_UEVENTD_FSCK_EXEC] = {
-		.stype     = "ueventd",
-		.ttype     = "fsck_exec",
-		.tclass    = "file",
-		.specified = AVTAB_ALLOWED,
-		.perm      = "open read execute execute_no_trans",
-		.op        = OP_NEW | OP_DEL,
-	},
-
 	/*
 	 * Policy Group 3
-	 * Purpose: allow tee & fp to access to userdata
-	 */
-	/* avc policy: allow tee system_data_file:dir { create write add_name } */
-	[AVC_TEE_SYSTEM_DATA_FILE_DIR] = {
-		.stype     = "tee",
-		.ttype     = "system_data_file",
-		.tclass    = "dir",
-		.specified = AVTAB_ALLOWED,
-		.perm      = "create write add_name",
-		.op        = OP_MOD | OP_UNMOD,
-	},
-
-	/* avc policy: allow tee system_data_file:file { create open write } */
-	[AVC_TEE_SYSTEM_DATA_FILE_FILE] = {
-		.stype     = "tee",
-		.ttype     = "system_data_file",
-		.tclass    = "file",
-		.specified = AVTAB_ALLOWED,
-		.perm      = "create open write",
-		.op        = OP_NEW | OP_DEL,
-	},
-
-	/* avc policy: allow fingerprintd system_data_file:dir { create write add_name remove_name } */
-	[AVC_FP_SYSTEM_DATA_FILE_DIR] = {
-		.stype     = "fingerprintd",
-		.ttype     = "system_data_file",
-		.tclass    = "dir",
-		.specified = AVTAB_ALLOWED,
-		.perm      = "create write add_name remove_name",
-		.op        = OP_NEW | OP_DEL,
-	},
-
-	/* avc policy: allow fingerprintd system_data_file:file { rename unlink } */
-	[AVC_FP_SYSTEM_DATA_FILE_FILE] = {
-		.stype     = "fingerprintd",
-		.ttype     = "system_data_file",
-		.tclass    = "file",
-		.specified = AVTAB_ALLOWED,
-		.perm      = "rename unlink",
-		.op        = OP_NEW | OP_DEL,
-	},
-
-	/*
-	 * Policy Group 4
-	 * Purpose: allow su to access tee device
-	 */
-	/* avc policy: allow su tee_device:chr_file { open read write ioctl } */
-	[AVC_SU_TEE_DEV_CHR_FILE] = {
-		.stype     = "su",
-		.ttype     = "tee_device",
-		.tclass    = "chr_file",
-		.specified = AVTAB_ALLOWED,
-		.perm      = "open read write ioctl",
-		.op        = OP_NEW | OP_DEL,
-	},
-
-	/*
-	 * Policy Group 5
 	 * Purpose: allow vold to setenforce
 	 */
 	/* avc policy: allow vold selinuxfs:file write */

@@ -899,8 +899,8 @@ static int lpm_suspend_enter(suspend_state_t state)
 	}
 	cpu_prepare(cluster, idx, false);
 	cluster_prepare(cluster, cpumask, idx, false);
-	msm_cpu_pm_enter_sleep(cluster->cpu->levels[idx].mode, false);
 	zte_pm_before_powercollapse();/*ZTE add:suspend->PC*/
+	msm_cpu_pm_enter_sleep(cluster->cpu->levels[idx].mode, false);
 	cluster_unprepare(cluster, cpumask, idx, false);
 	cpu_unprepare(cluster, idx, false);
 	return 0;

@@ -76,6 +76,18 @@ enum wcd_mbhc_cs_mb_en_flag {
 static void wcd_mbhc_jack_report(struct wcd_mbhc *mbhc,
 				struct snd_soc_jack *jack, int status, int mask)
 {
+	if (jack == &mbhc->headset_jack) {
+		pr_info("%s:headset_jack status(%#X)\n", __func__, status);
+		if (status | SND_JACK_MICROPHONE)
+			mbhc->fake_btn = true;
+		schedule_delayed_work(&mbhc->mbhc_headset_insert_dwork, msecs_to_jiffies(1500));
+	} else if (jack == &mbhc->button_jack) {
+		if (mbhc->fake_btn == true) {
+			pr_err("%s: This button is fake.\n", __func__);
+			return;
+		}
+		pr_info("%s:button_jack status(%#X)\n", __func__, status);
+	}
 	snd_soc_jack_report(jack, status, mask);
 }
 
@@ -1662,6 +1674,20 @@ static void wcd_btn_lpress_fn(struct work_struct *work)
 	mbhc->mbhc_cb->lock_sleep(mbhc, false);
 }
 
+static void wcd_fake_btn(struct work_struct *work)
+{
+	struct delayed_work *dwork;
+	struct wcd_mbhc *mbhc;
+
+	pr_debug("%s: Enter\n", __func__);
+
+	dwork = to_delayed_work(work);
+	mbhc = container_of(dwork, struct wcd_mbhc, mbhc_headset_insert_dwork);
+
+	mbhc->fake_btn = false;
+	pr_debug("%s: leave\n", __func__);
+}
+
 static bool wcd_mbhc_fw_validate(const void *data, size_t size)
 {
 	u32 cfg_offset;
@@ -2227,6 +2253,8 @@ int wcd_mbhc_init(struct wcd_mbhc *mbhc, struct snd_soc_codec *codec,
 		INIT_DELAYED_WORK(&mbhc->mbhc_firmware_dwork,
 				  wcd_mbhc_fw_read);
 		INIT_DELAYED_WORK(&mbhc->mbhc_btn_dwork, wcd_btn_lpress_fn);
+		mbhc->fake_btn = false;
+		INIT_DELAYED_WORK(&mbhc->mbhc_headset_insert_dwork, wcd_fake_btn);
 	}
 	mutex_init(&mbhc->hphl_pa_lock);
 	mutex_init(&mbhc->hphr_pa_lock);

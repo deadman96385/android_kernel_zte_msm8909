@@ -352,6 +352,8 @@ struct mdss_dsi_ctrl_pdata {
 	bool reset_suspend_low_enabled;
 	bool vdd_vio_shutdown_enabled;
 	bool lcd_backlight_min_value_limit;
+	bool lcd_backlight_save_power;
+	int   lcd_backlight_min_value;
 	int pwm_pmic_gpio;
 	int pwm_lpg_chan;
 	int bklt_max;

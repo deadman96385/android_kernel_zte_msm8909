@@ -5162,6 +5162,96 @@ static struct regulator *wcd8x16_wcd_codec_find_regulator(
 	return NULL;
 }
 
+static int msm8x16_wcd_device_down_state(struct snd_soc_codec *codec)
+{
+	struct msm8916_asoc_mach_data *pdata = NULL;
+	struct msm8x16_wcd_priv *msm8x16_wcd_priv =
+		snd_soc_codec_get_drvdata(codec);
+
+	pdata = snd_soc_card_get_drvdata(codec->card);
+	dev_info(codec->dev, "%s: device down state!\n", __func__);
+
+	atomic_set(&pdata->mclk_enabled, false);
+	set_bit(BUS_DOWN, &msm8x16_wcd_priv->status_mask);
+	snd_soc_card_change_online_state(codec->card, 0);
+	return 0;
+}
+
+static int msm8x16_wcd_device_reset(struct snd_soc_codec *codec)
+{
+	struct msm8916_asoc_mach_data *pdata = NULL;
+	struct msm8x16_wcd_priv *msm8x16_wcd_priv =
+		snd_soc_codec_get_drvdata(codec);
+
+	pdata = snd_soc_card_get_drvdata(codec->card);
+	dev_info(codec->dev, "%s: device down reset!\n", __func__);
+
+	clear_bit(BUS_DOWN, &msm8x16_wcd_priv->status_mask);
+
+	msm8x16_wcd_write(codec,
+		MSM8X16_WCD_A_ANALOG_TX_1_EN, 0x3);
+	msm8x16_wcd_write(codec,
+		MSM8X16_WCD_A_ANALOG_TX_2_EN, 0x3);
+	if (msm8x16_wcd_priv->boost_option == BOOST_ON_FOREVER) {
+		if ((snd_soc_read(codec, MSM8X16_WCD_A_ANALOG_SPKR_DRV_CTL)
+			& 0x80) == 0) {
+			snd_soc_update_bits(codec,
+				MSM8X16_WCD_A_CDC_CLK_MCLK_CTL,	0x01, 0x01);
+			snd_soc_update_bits(codec,
+				MSM8X16_WCD_A_CDC_CLK_PDM_CTL, 0x03, 0x03);
+			snd_soc_write(codec,
+				MSM8X16_WCD_A_ANALOG_MASTER_BIAS_CTL, 0x30);
+			snd_soc_update_bits(codec,
+				MSM8X16_WCD_A_DIGITAL_CDC_RST_CTL, 0x80, 0x80);
+			snd_soc_update_bits(codec,
+				MSM8X16_WCD_A_DIGITAL_CDC_TOP_CLK_CTL,
+				0x0C, 0x0C);
+			snd_soc_update_bits(codec,
+				MSM8X16_WCD_A_DIGITAL_CDC_DIG_CLK_CTL,
+				0x84, 0x84);
+			snd_soc_update_bits(codec,
+				MSM8X16_WCD_A_DIGITAL_CDC_ANA_CLK_CTL,
+				0x10, 0x10);
+			snd_soc_update_bits(codec,
+				MSM8X16_WCD_A_ANALOG_SPKR_PWRSTG_CTL,
+				0x1F, 0x1F);
+			snd_soc_update_bits(codec,
+				MSM8X16_WCD_A_ANALOG_RX_COM_BIAS_DAC,
+				0x90, 0x90);
+			snd_soc_update_bits(codec,
+				MSM8X16_WCD_A_ANALOG_RX_EAR_CTL,
+				0xFF, 0xFF);
+			usleep_range(20, 21);
+			snd_soc_update_bits(codec,
+				MSM8X16_WCD_A_ANALOG_SPKR_PWRSTG_CTL,
+				0xFF, 0xFF);
+			snd_soc_update_bits(codec,
+				MSM8X16_WCD_A_ANALOG_SPKR_DRV_CTL,
+				0xE9, 0xE9);
+		}
+	}
+	msm8x16_wcd_boost_off(codec);
+	/* 40ms to allow boost to discharge */
+	msleep(40);
+	/* Disable PA to avoid pop during codec bring up */
+	snd_soc_update_bits(codec, MSM8X16_WCD_A_ANALOG_RX_HPH_CNP_EN,
+			0x30, 0x00);
+	snd_soc_update_bits(codec, MSM8X16_WCD_A_ANALOG_SPKR_DRV_CTL,
+			0x80, 0x00);
+	msm8x16_wcd_write(codec,
+		MSM8X16_WCD_A_ANALOG_RX_HPH_L_PA_DAC_CTL, 0x20);
+	msm8x16_wcd_write(codec,
+		MSM8X16_WCD_A_ANALOG_RX_HPH_R_PA_DAC_CTL, 0x20);
+	msm8x16_wcd_write(codec,
+		MSM8X16_WCD_A_ANALOG_RX_EAR_CTL, 0x12);
+	msm8x16_wcd_write(codec,
+		MSM8X16_WCD_A_ANALOG_SPKR_DAC_CTL, 0x93);
+
+	msm8x16_wcd_bringup(codec);
+	return 0;
+}
+
+#if 0
 static int msm8x16_wcd_device_down(struct snd_soc_codec *codec)
 {
 	struct msm8916_asoc_mach_data *pdata = NULL;
@@ -5235,13 +5325,14 @@ static int msm8x16_wcd_device_down(struct snd_soc_codec *codec)
 	snd_soc_card_change_online_state(codec->card, 0);
 	return 0;
 }
+#endif
 
 static int msm8x16_wcd_device_up(struct snd_soc_codec *codec)
 {
 	struct msm8x16_wcd_priv *msm8x16_wcd_priv =
 		snd_soc_codec_get_drvdata(codec);
 	int ret = 0;
-	dev_dbg(codec->dev, "%s: device up!\n", __func__);
+	dev_info(codec->dev, "%s: device up!\n", __func__);
 
 	mutex_lock(&codec->mutex);
 
@@ -5294,7 +5385,7 @@ static int modem_state_callback(struct notifier_block *nb, unsigned long value,
 	unsigned long timeout;
 
 	if (value == SUBSYS_BEFORE_SHUTDOWN)
-		msm8x16_wcd_device_down(registered_codec);
+		msm8x16_wcd_device_down_state(registered_codec);
 	else if (value == SUBSYS_AFTER_POWERUP) {
 
 		dev_dbg(registered_codec->dev,
@@ -5320,6 +5411,7 @@ static int modem_state_callback(struct notifier_block *nb, unsigned long value,
 				"%s: DSP is ready\n", __func__);
 		}
 
+		msm8x16_wcd_device_reset(registered_codec);
 		msm8x16_wcd_device_up(registered_codec);
 	}
 	return NOTIFY_OK;

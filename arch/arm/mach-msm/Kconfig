@@ -522,6 +522,21 @@ config BOARD_CALBEE
 	bool "ZTE CALBEE"
 	help
 	  Support for ZTE MSM8909 CALBEE device.
+
+config BOARD_LOFT
+    depends on ARCH_MSM8909
+    select ZTE_BOARD_ID
+    bool "ZTE LOFT"
+    help
+      Support for ZTE MSM8909 LOFT device.
+
+
+config BOARD_SAPPHIRE4G
+    depends on ARCH_MSM8909
+    select ZTE_BOARD_ID
+    bool "ZTE SAPPHIRE4G"
+    help
+      Support for ZTE MSM8909 SAPPHIRE4G device.
 endmenu
 
 config MSM_STACKED_MEMORY

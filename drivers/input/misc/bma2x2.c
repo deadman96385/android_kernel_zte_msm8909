@@ -5417,6 +5417,12 @@ static void bma2x2_set_enable(struct device *dev,	int enable)
 	ktime_t ktime;
 	int delay_ms;
 
+	unsigned char data1 = 0;
+
+	bma2x2_smbus_read_byte(client,
+		BMA2X2_BW_SEL_REG, &data1);
+	dev_dbg(dev,	"bw value when enabl/disable is 0x%x\n", data1);
+
 	if (atomic_read(&bma2x2->cal_status)) {
 		dev_err(dev,	"can not enable or disable when calibration\n");
 		return;
@@ -5505,6 +5511,7 @@ static void bma2x2_set_enable(struct device *dev,	int enable)
 			}
 		}
 	}
+
 mutex_exit:
 	mutex_unlock(&bma2x2->enable_mutex);
 	dev_dbg(&client->dev,
@@ -7716,7 +7723,8 @@ static int bma2x2_probe(struct i2c_client *client,
 	mutex_init(&data->mode_mutex);
 	mutex_init(&data->enable_mutex);
 	mutex_init(&data->op_lock);
-	data->bandwidth = BMA2X2_BW_SET;
+	/*data->bandwidth = BMA2X2_BW_SET;*/
+	data->bandwidth = BMA2X2_BW_62_50HZ;
 	data->range = BMA2X2_RANGE_SET;
 	data->sensitivity = bosch_sensor_range_map[0];
 	atomic_set(&data->cal_status,	0);

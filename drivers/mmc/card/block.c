@@ -2196,7 +2196,9 @@ static void mmc_blk_write_packing_control(struct mmc_queue *mq,
 	 * the write packing
 	 */
 	if (!(host->caps2 & MMC_CAP2_PACKED_WR_CONTROL)) {
+#if !defined(ZTE_FEATURE_TF_PARTIAL)
 		mq->wr_packing_enabled = true;
+#endif
 		return;
 	}
 

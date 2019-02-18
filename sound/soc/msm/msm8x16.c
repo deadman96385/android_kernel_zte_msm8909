@@ -86,7 +86,8 @@ static int msm_pri_mi2s_rx_ch = 2;
 static int pri_rx_sample_rate = SAMPLING_RATE_48KHZ;
 static int mi2s_tx_sample_rate = SAMPLING_RATE_48KHZ;
 #if defined(CONFIG_BOARD_GEMI) || defined(CONFIG_BOARD_KELLY) || defined(CONFIG_BOARD_LEWIS) ||\
-	defined(CONFIG_BOARD_SAPPHIRE) || defined(CONFIG_BOARD_GRAYJOYLITE) || defined(CONFIG_BOARD_CALBEE)
+	defined(CONFIG_BOARD_SAPPHIRE) || defined(CONFIG_BOARD_GRAYJOYLITE) || defined(CONFIG_BOARD_CALBEE) ||\
+	defined(CONFIG_BOARD_LOFT) || defined(CONFIG_BOARD_SAPPHIRE4G)
 static int ext_spk_boost_enable;
 static int ext_spk_boost_gpio = -1;
 #endif
@@ -95,7 +96,7 @@ static int spk_hs_swtich_status;
 static int ext_spk_pa_gpio = -1;
 static int ext_spk_hs_switch_gpio = -1;
 #endif
-#if defined(CONFIG_BOARD_SAPPHIRE)
+#if defined(CONFIG_BOARD_SAPPHIRE) || defined(CONFIG_BOARD_SAPPHIRE4G)
 static int spk_eap_swtich_status;
 static int ext_spk_eap_switch_gpio = -1;
 #endif
@@ -433,13 +434,14 @@ static char const *mi2s_tx_sample_rate_text[] = {"KHZ_48", "KHZ_96",
 					"KHZ_192", "KHZ_8",
 					"KHZ_16", "KHZ_32"};
 #if defined(CONFIG_BOARD_GEMI) || defined(CONFIG_BOARD_KELLY) || defined(CONFIG_BOARD_LEWIS) ||\
-	defined(CONFIG_BOARD_SAPPHIRE) || defined(CONFIG_BOARD_GRAYJOYLITE) || defined(CONFIG_BOARD_CALBEE)
+	defined(CONFIG_BOARD_SAPPHIRE) || defined(CONFIG_BOARD_GRAYJOYLITE) || defined(CONFIG_BOARD_CALBEE) ||\
+	defined(CONFIG_BOARD_LOFT) || defined(CONFIG_BOARD_SAPPHIRE4G)
 static const char *const ext_spk_boost_text[] = {"Off", "On"};
 #endif
 #if defined(CONFIG_BOARD_HELEN)
 static const char *const spk_headset_switch[] = {"Spk", "Hs"};
 #endif
-#if defined(CONFIG_BOARD_SAPPHIRE)
+#if defined(CONFIG_BOARD_SAPPHIRE) || defined(CONFIG_BOARD_SAPPHIRE4G)
 static const char *const spk_earpiece_switch[] = {"Spk", "Eap"};
 #endif
 
@@ -719,6 +721,7 @@ static int msm_btsco_be_hw_params_fixup(struct snd_soc_pcm_runtime *rtd,
 	rate->min = rate->max = msm_btsco_rate;
 	channels->min = channels->max = msm_btsco_ch;
 
+	pr_debug("%s() msm_btsco_rate %d\n", __func__, msm_btsco_rate);
 	return 0;
 }
 
@@ -943,7 +946,8 @@ static int msm_mi2s_tx_ch_put(struct snd_kcontrol *kcontrol,
 }
 
 #if defined(CONFIG_BOARD_GEMI) || defined(CONFIG_BOARD_KELLY) || defined(CONFIG_BOARD_LEWIS) ||\
-	defined(CONFIG_BOARD_SAPPHIRE) || defined(CONFIG_BOARD_GRAYJOYLITE) || defined(CONFIG_BOARD_CALBEE)
+	defined(CONFIG_BOARD_SAPPHIRE) || defined(CONFIG_BOARD_GRAYJOYLITE) || defined(CONFIG_BOARD_CALBEE) ||\
+	defined(CONFIG_BOARD_LOFT) || defined(CONFIG_BOARD_SAPPHIRE4G)
 static int ext_spk_boost_get(struct snd_kcontrol *kcontrol,
 		       struct snd_ctl_elem_value *ucontrol)
 {
@@ -1011,7 +1015,7 @@ int msm8x16_enable_external_spk_pa(int enable)
 EXPORT_SYMBOL(msm8x16_enable_external_spk_pa);
 #endif
 
-#if defined(CONFIG_BOARD_SAPPHIRE)
+#if defined(CONFIG_BOARD_SAPPHIRE) || defined(CONFIG_BOARD_SAPPHIRE4G)
 static int spk_eap_switch_get(struct snd_kcontrol *kcontrol,
 		       struct snd_ctl_elem_value *ucontrol)
 {
@@ -1311,13 +1315,14 @@ static const struct soc_enum msm_snd_enum[] = {
 	SOC_ENUM_SINGLE_EXT(6, pri_rx_sample_rate_text),
 	SOC_ENUM_SINGLE_EXT(6, mi2s_tx_sample_rate_text),
 #if defined(CONFIG_BOARD_GEMI) || defined(CONFIG_BOARD_KELLY) || defined(CONFIG_BOARD_LEWIS) ||\
-	defined(CONFIG_BOARD_SAPPHIRE) || defined(CONFIG_BOARD_GRAYJOYLITE) || defined(CONFIG_BOARD_CALBEE)
+	defined(CONFIG_BOARD_SAPPHIRE) || defined(CONFIG_BOARD_GRAYJOYLITE) || defined(CONFIG_BOARD_CALBEE) ||\
+	defined(CONFIG_BOARD_LOFT) || defined(CONFIG_BOARD_SAPPHIRE4G)
 	SOC_ENUM_SINGLE_EXT(2, ext_spk_boost_text),
 #endif
 #if defined(CONFIG_BOARD_HELEN)
 	SOC_ENUM_SINGLE_EXT(2, spk_headset_switch),
 #endif
-#if defined(CONFIG_BOARD_SAPPHIRE)
+#if defined(CONFIG_BOARD_SAPPHIRE) || defined(CONFIG_BOARD_SAPPHIRE4G)
 	SOC_ENUM_SINGLE_EXT(2, spk_earpiece_switch),
 #endif
 };
@@ -1344,7 +1349,8 @@ static const struct snd_kcontrol_new msm_snd_controls[] = {
 	SOC_ENUM_EXT("MI2S TX SampleRate", msm_snd_enum[4],
 			mi2s_tx_sample_rate_get, mi2s_tx_sample_rate_put),
 #if defined(CONFIG_BOARD_GEMI) || defined(CONFIG_BOARD_KELLY) || defined(CONFIG_BOARD_LEWIS) ||\
-	defined(CONFIG_BOARD_SAPPHIRE) || defined(CONFIG_BOARD_GRAYJOYLITE) || defined(CONFIG_BOARD_CALBEE)
+	defined(CONFIG_BOARD_SAPPHIRE) || defined(CONFIG_BOARD_GRAYJOYLITE) || defined(CONFIG_BOARD_CALBEE) ||\
+	defined(CONFIG_BOARD_LOFT) || defined(CONFIG_BOARD_SAPPHIRE4G)
 	SOC_ENUM_EXT("External Spk Boost", msm_snd_enum[5],
 			ext_spk_boost_get, ext_spk_boost_put),
 #endif
@@ -1352,7 +1358,7 @@ static const struct snd_kcontrol_new msm_snd_controls[] = {
 	SOC_ENUM_EXT("Spk Headset Switch", msm_snd_enum[5],
 			spk_hs_switch_get, spk_hs_switch_put),
 #endif
-#if defined(CONFIG_BOARD_SAPPHIRE)
+#if defined(CONFIG_BOARD_SAPPHIRE) || defined(CONFIG_BOARD_SAPPHIRE4G)
 	SOC_ENUM_EXT("Spk Earpiece Switch", msm_snd_enum[6],
 			spk_eap_switch_get, spk_eap_switch_put),
 #endif
@@ -3340,7 +3346,8 @@ static int msm8x16_asoc_machine_probe(struct platform_device *pdev)
 		}
 	}
 #if defined(CONFIG_BOARD_GEMI) || defined(CONFIG_BOARD_KELLY) || defined(CONFIG_BOARD_LEWIS) ||\
-	defined(CONFIG_BOARD_SAPPHIRE) || defined(CONFIG_BOARD_GRAYJOYLITE) || defined(CONFIG_BOARD_CALBEE)
+	defined(CONFIG_BOARD_SAPPHIRE) || defined(CONFIG_BOARD_GRAYJOYLITE) || defined(CONFIG_BOARD_CALBEE) ||\
+	defined(CONFIG_BOARD_LOFT) || defined(CONFIG_BOARD_SAPPHIRE4G)
 	ext_spk_boost_gpio = of_get_named_gpio(pdev->dev.of_node,
 				"qcom,msm-spk-ext-boost", 0);
 	if (ext_spk_boost_gpio < 0) {
@@ -3408,7 +3415,7 @@ static int msm8x16_asoc_machine_probe(struct platform_device *pdev)
 		gpio_direction_output(ext_spk_hs_switch_gpio, 0);
 	}
 #endif
-#if defined(CONFIG_BOARD_SAPPHIRE)
+#if defined(CONFIG_BOARD_SAPPHIRE) || defined(CONFIG_BOARD_SAPPHIRE4G)
 	ext_spk_eap_switch_gpio = of_get_named_gpio(pdev->dev.of_node,
 				"qcom,msm-spk-earpiece-switch", 0);
 	if (ext_spk_eap_switch_gpio < 0) {
@@ -3592,7 +3599,8 @@ static int msm8x16_asoc_machine_probe(struct platform_device *pdev)
 	}
 
 #if defined(CONFIG_BOARD_GEMI) || defined(CONFIG_BOARD_KELLY) || defined(CONFIG_BOARD_LEWIS) ||\
-	defined(CONFIG_BOARD_SAPPHIRE) || defined(CONFIG_BOARD_GRAYJOYLITE) || defined(CONFIG_BOARD_CALBEE)
+	defined(CONFIG_BOARD_SAPPHIRE) || defined(CONFIG_BOARD_GRAYJOYLITE) || defined(CONFIG_BOARD_CALBEE) ||\
+	defined(CONFIG_BOARD_LOFT) || defined(CONFIG_BOARD_SAPPHIRE4G)
 	gpio_direction_output(ext_spk_boost_gpio, 0);
 #endif
 
@@ -3621,7 +3629,8 @@ static int msm8x16_asoc_machine_remove(struct platform_device *pdev)
 	if (pdata->vaddr_gpio_mux_pcm_ctl)
 		iounmap(pdata->vaddr_gpio_mux_pcm_ctl);
 #if defined(CONFIG_BOARD_GEMI) || defined(CONFIG_BOARD_KELLY) || defined(CONFIG_BOARD_LEWIS) ||\
-	defined(CONFIG_BOARD_SAPPHIRE) || defined(CONFIG_BOARD_GRAYJOYLITE) || defined(CONFIG_BOARD_CALBEE)
+	defined(CONFIG_BOARD_SAPPHIRE) || defined(CONFIG_BOARD_GRAYJOYLITE) || defined(CONFIG_BOARD_CALBEE) ||\
+	defined(CONFIG_BOARD_LOFT) || defined(CONFIG_BOARD_SAPPHIRE4G)
 	if (gpio_is_valid(ext_spk_boost_gpio))
 		gpio_free(ext_spk_boost_gpio);
 #endif
@@ -3631,7 +3640,7 @@ static int msm8x16_asoc_machine_remove(struct platform_device *pdev)
 	if (gpio_is_valid(ext_spk_hs_switch_gpio))
 		gpio_free(ext_spk_hs_switch_gpio);
 #endif
-#if defined(CONFIG_BOARD_SAPPHIRE)
+#if defined(CONFIG_BOARD_SAPPHIRE) || defined(CONFIG_BOARD_SAPPHIRE4G)
 	if (gpio_is_valid(ext_spk_eap_switch_gpio))
 		gpio_free(ext_spk_eap_switch_gpio);
 #endif

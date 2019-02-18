@@ -1557,6 +1557,13 @@ int hdmi_edid_read(void *input)
 		goto error;
 	}
 
+	/* Find out if CEA extension blocks exceeding max limit */
+	if (num_of_cea_blocks >= MAX_EDID_BLOCKS) {
+		DEV_WARN("%s: HDMI EDID exceeded max CEA blocks limit\n",
+				__func__);
+		num_of_cea_blocks = MAX_EDID_BLOCKS - 1;
+	}
+
 	if (num_of_cea_blocks) {
 		/* EDID_CEA_EXTENSION_VERSION[0x81]: Offset to CEA extension
 		 * version number - v1,v2,v3 (v1 is seldom, v2 is obsolete,

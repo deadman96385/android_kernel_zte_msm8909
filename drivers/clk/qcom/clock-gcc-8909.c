@@ -836,9 +836,11 @@ static struct rcg_clk camss_gp1_clk_src = {
 };
 
 static struct clk_freq_tbl ftbl_gcc_camss_mclk0_1_clk[] = {
+	F( 20842000,	gpll2,	1,	1,	38),
 	F( 24000000,	gpll2,	1,	1,	33),
 	F( 25548000,	gpll2,	1,	1,	31),
 	F( 26400000,	gpll2,	1,	1,	30),
+	F( 37714000,	gpll2,	1,	1,	21),
 	F( 66670000,	gpll0,	12,	0,	0),
 	F_END
 };

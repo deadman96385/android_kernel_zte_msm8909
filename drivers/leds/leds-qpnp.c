@@ -968,10 +968,15 @@ static int qpnp_mpp_set(struct qpnp_led_data *led)
 					period_us * NSEC_PER_USEC);
 			}
 			} else {
-#if (defined CONFIG_BOARD_MAX) || (defined CONFIG_BOARD_XRAY45)
-			|| (defined CONFIG_BOARD_XRAY50)/*n9520A/N9131/N9133*/
+/* n9520A/N9131/N9133/N818S/N9137/N818S4G */
+#if defined(CONFIG_BOARD_MAX) || defined(CONFIG_BOARD_XRAY45) \
+			|| defined(CONFIG_BOARD_XRAY50) || defined(CONFIG_BOARD_SAPPHIRE) \
+			|| defined(CONFIG_BOARD_GRAYJOYLITE) || defined(CONFIG_BOARD_SAPPHIRE4G)
 			rc = pwm_config_us(led->mpp_cfg->pwm_cfg->pwm_dev,
-			0.5*1000000, 7.5*1000000);/*blink 0.5s per 7.5s .SPRINT*/
+			0.5*1000000, 7.5*1000000); /*blink 0.5s per 7.5s .SPRINT*/
+#elif defined(CONFIG_LEDS_BLINK_6S)
+			rc = pwm_config_us(led->mpp_cfg->pwm_cfg->pwm_dev,
+			0.5*1000000, 6.5*1000000); /*blink 0.5s per 6.5s .TMO*/
 #else
 			/*blink only for blink=1 ,duty cycles*/
 			rc = pwm_config_us(led->mpp_cfg->pwm_cfg->pwm_dev,

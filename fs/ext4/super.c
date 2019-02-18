@@ -1131,7 +1131,7 @@ enum {
 	Opt_inode_readahead_blks, Opt_journal_ioprio,
 	Opt_dioread_nolock, Opt_dioread_lock,
 	Opt_discard, Opt_nodiscard, Opt_init_itable, Opt_noinit_itable,
-	Opt_max_dir_size_kb,
+	Opt_max_dir_size_kb, Opt_coexist_discard_fstrim, Opt_nocoexist_discard_fstrim,
 };
 
 static const match_table_t tokens = {
@@ -1211,6 +1211,8 @@ static const match_table_t tokens = {
 	{Opt_removed, "reservation"},	/* mount option from ext2/3 */
 	{Opt_removed, "noreservation"}, /* mount option from ext2/3 */
 	{Opt_removed, "journal=%u"},	/* mount option from ext2/3 */
+	{Opt_coexist_discard_fstrim, "coexist_discard_fstrim"},
+	{Opt_nocoexist_discard_fstrim, "nocoexist_discard_fstrim"},
 	{Opt_err, NULL},
 };
 
@@ -1440,6 +1442,12 @@ static int handle_mount_opt(struct super_block *sb, char *opt, int token,
 		return 1;
 	case Opt_i_version:
 		sb->s_flags |= MS_I_VERSION;
+		return 1;
+	case Opt_nocoexist_discard_fstrim:
+		set_opt2(sb, NOCOEXIST);
+		return 1;
+	case Opt_coexist_discard_fstrim:
+		clear_opt2(sb, NOCOEXIST);
 		return 1;
 	}
 
@@ -1774,6 +1782,9 @@ static int _ext4_show_options(struct seq_file *seq, struct super_block *sb,
 		SEQ_OPTS_PRINT("init_itable=%u", sbi->s_li_wait_mult);
 	if (nodefs || sbi->s_max_dir_size_kb)
 		SEQ_OPTS_PRINT("max_dir_size_kb=%u", sbi->s_max_dir_size_kb);
+
+	if (test_opt2(sb, NOCOEXIST))
+		SEQ_OPTS_PUTS("nocoexist_discard_fstrim");
 
 	ext4_show_quota_options(seq, sb);
 	return 0;

@@ -2145,7 +2145,7 @@ static int flash_info_proc_show(struct seq_file *m, void *v)
 		}
 	}
 
-	string_get_size((u64)(card->ext_csd.sectors) * 512, STRING_UNITS_2, cap_str, sizeof(cap_str));
+	string_get_size((u64)(card->ext_csd.sectors) * 512, STRING_UNITS_10, cap_str, sizeof(cap_str));
 
 	seq_printf(m,
 		"%s-%s-%02d/%04d-%s-NA\n",

@@ -161,7 +161,7 @@ obj-$(CONFIG_IPACK_BUS)		+= ipack/
 obj-$(CONFIG_NTB)		+= ntb/
 
 #MobiCore
-obj-$(CONFIG_MOBICORE_SUPPORT)  += gud/
+obj-$(CONFIG_TRUSTONIC_TEE)  += gud/
 
 obj-$(CONFIG_CORESIGHT)		+= coresight/
 obj-$(CONFIG_ESOC)		+= esoc/

@@ -3588,12 +3588,12 @@ static const struct usb_ep_ops usb_ep_ops = {
 /*notify open/close adbd uevent*/
 static ssize_t udc_print_switch_name(struct switch_dev *sdev, char *buf)
 {
-	return snprintf(buf, strlen(buf), "%s\n", "usb_scsi_command");
+	return snprintf(buf, 32, "%s\n", "usb_scsi_command");
 }
 
 static ssize_t udc_print_switch_state(struct switch_dev *sdev, char *buf)
 {
-	return snprintf(buf, strlen(buf), "%d\n", sdev->state);
+	return snprintf(buf, 32, "%d\n", sdev->state);
 }
 
 static void udc_uevent(struct switch_dev *sdev, int state)
@@ -3603,8 +3603,6 @@ static void udc_uevent(struct switch_dev *sdev, int state)
 	char *offline[2] = { "USB_STATE=OFFLINE", NULL };
 	char **uevent_envp = NULL;
 
-	/*switch_set_state(&sdev, state);*/
-
 	uevent_envp = state ? online : offline;
 
 	if (uevent_envp) {
@@ -3612,29 +3610,39 @@ static void udc_uevent(struct switch_dev *sdev, int state)
 		pr_info("%s: sent uevent %s\n", __func__, uevent_envp[0]);
 	}
 }
-int scsicmd_start_adbd(void)
+
+int scsicmd_enable_adb(int enable)
 {
 	struct ci13xxx *udc = _udc;
 
-	if (NULL == udc) {
+	if (udc == NULL) {
 		return -EPERM;
 	}
-	udc->start_adbd = 1;
-	switch_set_state(&udc->scsi_sdev, 1);
-	pr_info("usb_xbl: %s, %d  %d\n", __func__, __LINE__, udc->start_adbd);
+
+	pr_info("usb adb enable: %d\n", enable);
+	udc->start_adbd = enable;
+	if (enable)
+		switch_set_state(&udc->scsi_sdev, 0x01);
+	else
+		switch_set_state(&udc->scsi_sdev, 0x00);
+
 	return 0;
 }
-EXPORT_SYMBOL(scsicmd_start_adbd);
 
-int scsicmd_stop_adbd(void)
+int scsicmd_keep_cdrom(int enable)
 {
 	struct ci13xxx *udc = _udc;
 
-	if (NULL == udc)
+	if (udc == NULL) {
 		return -EPERM;
-	udc->start_adbd = 0;
-	switch_set_state(&udc->scsi_sdev, 2);
-	pr_info("usb_xbl: %s, %d  %d\n", __func__, __LINE__, udc->start_adbd);
+	}
+
+	pr_info("usb keep in cdrom: %d\n", enable);
+	if (enable)
+		switch_set_state(&udc->scsi_sdev, 0x21);
+	else
+		switch_set_state(&udc->scsi_sdev, 0x20);
+
 	return 0;
 }
 
@@ -3647,11 +3655,12 @@ static void scsicmd_usbstate_offline(struct work_struct *w)
 
 	if (udc->start_adbd == 1) {
 		pr_info("usb_xbl: %s, %d  %d\n", __func__, __LINE__, udc->start_adbd);
-		switch_set_state(&udc->scsi_sdev, 0);
+		switch_set_state(&udc->scsi_sdev, 0x00);
 	}
 	udc->start_adbd = 0;
 }
 /*end*/
+
 /******************************************************************************
  * GADGET block
  *****************************************************************************/

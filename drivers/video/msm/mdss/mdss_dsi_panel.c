@@ -68,7 +68,7 @@ void  mdss_dsi_panel_lcd_proc(struct device_node *node)
 
 	d_entry = proc_create("msm_lcd", 0664, NULL, &proc_ops);
 	if (d_entry == NULL) {
-		pr_err("proc_create ts_information failed!\n");
+		pr_err("proc_create msm_lcd failed!\n");
 	}
 	panel_name = of_get_property(node,
 		"qcom,mdss-dsi-panel-name", NULL);
@@ -227,13 +227,24 @@ static struct dsi_cmd_desc backlight_cmd = {
 	led_pwm1
 };
 
+static char led_bf_open[4] = {0xBF, 0x91, 0x61, 0xF2};	/* DTYPE_DCS_WRITE1 */
+static char led_bf_close[4] = {0xBF, 0x09, 0xB1, 0x7F};	/* DTYPE_DCS_WRITE1 */
+static struct dsi_cmd_desc backlight_cmd_jd9161[] = {
+	{{DTYPE_DCS_LWRITE, 1, 0, 0, 1, sizeof(led_bf_open)},
+	led_bf_open},
+	{{DTYPE_DCS_WRITE1, 1, 0, 0, 1, sizeof(led_pwm1)},
+	led_pwm1},
+	{{DTYPE_DCS_LWRITE, 1, 0, 0, 1, sizeof(led_bf_close)},
+	led_bf_close}
+};
+
 static  unsigned char led_pwm_12bit[3] = {0x51, 0x00, 0x00};
 static struct dsi_cmd_desc backlight_cmd_12bit = {
 	{DTYPE_DCS_LWRITE, 1, 0, 0, 1, sizeof(led_pwm_12bit)},
 	led_pwm_12bit
 };
 #ifdef ZTE_FASTMMI_MANUFACTURING_VERSION
-#define PV_FASTMMI_MAX_LEVEL  255
+#define PV_FASTMMI_MAX_LEVEL 255
 #define PV_FASTMMI_HALF_LEVEL 127
 #define PV_FASTMMI_ZERO_LEVEL 0
 #define PV_FASTMMI_TRUE      1
@@ -249,6 +260,7 @@ static void mdss_dsi_panel_bklt_dcs(struct mdss_dsi_ctrl_pdata *ctrl, int level)
 	int poweroffcharge;
 	int recovery_mode;
 	int ftm_mode;
+	int system_level = level;
 
 	poweroffcharge = socinfo_get_charging_flag();
 	recovery_mode = socinfo_get_recovery_flag();
@@ -265,7 +277,7 @@ static void mdss_dsi_panel_bklt_dcs(struct mdss_dsi_ctrl_pdata *ctrl, int level)
 	 * actually it is better to control bl by recovery mode itself.
 	 */
 	if (recovery_mode) {
-		if (level == 127)
+		if (level == 127 || level == 255)
 			level = 0;
 	}
 
@@ -274,14 +286,10 @@ static void mdss_dsi_panel_bklt_dcs(struct mdss_dsi_ctrl_pdata *ctrl, int level)
 		if (ctrl->ndx != DSI_CTRL_LEFT)
 			return;
 	}
-	if (ctrl->lcd_backlight_min_value_limit) {
-		if (level > 0 && level <= 4)
-			level = 4;
-	}
-	pr_info("%s: level=%d\n", __func__, level);
+
 #ifdef ZTE_FASTMMI_MANUFACTURING_VERSION
 	if (initpvflag == PV_FASTMMI_FALSE) {
-		if (level == PV_FASTMMI_ZERO_LEVEL || level == PV_FASTMMI_MAX_LEVEL || level == PV_FASTMMI_HALF_LEVEL)
+		if (level == PV_FASTMMI_ZERO_LEVEL || level == PV_FASTMMI_HALF_LEVEL || level == PV_FASTMMI_MAX_LEVEL)
 			initpvflag = PV_FASTMMI_FALSE;
 		else
 			initpvflag = PV_FASTMMI_TRUE;
@@ -289,6 +297,21 @@ static void mdss_dsi_panel_bklt_dcs(struct mdss_dsi_ctrl_pdata *ctrl, int level)
 	if (initpvflag == PV_FASTMMI_FALSE)
 		return;
 #endif
+
+#ifdef ZTE_ENABLE_BRIGHTNESS_CURVE
+	if (ctrl->lcd_backlight_save_power && level != 0)
+		level = (15*system_level*system_level + 6059*system_level+29580)/10000;
+#endif
+	if (ctrl->lcd_backlight_min_value_limit) {
+		if (level > 0 && level <= 4) {
+			if (ctrl->lcd_backlight_min_value == 0) {
+				level = 4;
+			} else {
+				level = ctrl->lcd_backlight_min_value;
+			}
+		}
+	}
+	pr_info("%s: system_level=%d level=%d\n", __func__, system_level, level);
 
 	if (ctrl->lcd_12bit_backlight) {
 		unsigned int new_level = level*4095/255;
@@ -306,6 +329,15 @@ static void mdss_dsi_panel_bklt_dcs(struct mdss_dsi_ctrl_pdata *ctrl, int level)
 		cmdreq.cmds = &backlight_cmd;
 	}
 	cmdreq.cmds_cnt = 1;
+
+	if ((strnstr(&pinfo->panel_name[0], "HELITAI_jd9161_hsd_480_800_4p0Inch",
+					MDSS_MAX_PANEL_LEN) != NULL) ||
+	    (strnstr(&pinfo->panel_name[0], "zteHELITAI_jd9161_hsd_480_854_5.0Inch",
+					MDSS_MAX_PANEL_LEN) != NULL)) {
+		cmdreq.cmds = backlight_cmd_jd9161;
+		cmdreq.cmds_cnt = 3;
+	}
+
 	cmdreq.flags = CMD_REQ_COMMIT | CMD_CLK_CTRL;
 	cmdreq.rlen = 0;
 	cmdreq.cb = NULL;
@@ -1241,6 +1273,27 @@ static int mdss_dsi_gen_read_status_second(struct mdss_dsi_ctrl_pdata *ctrl_pdat
 	}
 }
 
+static int mdss_dsi_jd9161_gen_read_status_second(struct mdss_dsi_ctrl_pdata *ctrl_pdata)
+{
+	struct mdss_panel_info *pinfo = &ctrl_pdata->panel_data.panel_info;
+
+	if (!pinfo->esd_check_enabled_second) {
+		return 1;/* return normally */
+	}
+
+	/* 0x03 is the second value for jd9161 0x80 register */
+	if (ctrl_pdata->status_buf.data[0] != ctrl_pdata->status_value_second
+		|| ctrl_pdata->status_buf.data[1] != 0x03
+		|| (ctrl_pdata->status_buf.data[2] != 0x06 && ctrl_pdata->status_buf.data[2] != 0x04)) {
+		pr_err("%s: Read back value from panel is incorrect data[0]=%d data[1]=%d data[2]=%d\n",
+							__func__, ctrl_pdata->status_buf.data[0],
+							ctrl_pdata->status_buf.data[1], ctrl_pdata->status_buf.data[2]);
+		return -EINVAL;
+	} else {
+		return 1;/* return normally */
+	}
+}
+
 static int mdss_dsi_nt35596_read_status(struct mdss_dsi_ctrl_pdata *ctrl_pdata)
 {
 	if (ctrl_pdata->status_buf.data[0] !=
@@ -1345,6 +1398,13 @@ static int mdss_dsi_parse_panel_features(struct device_node *np,
 		"qcom,esd-check-enabled");
 	pinfo->esd_check_enabled_second = of_property_read_bool(np,
 		"qcom,esd-check-enabled-second");
+
+#ifdef ZTE_FASTMMI_MANUFACTURING_VERSION
+	pr_info("%s:%d, disable esd check in FASTMMI\n", __func__, __LINE__);
+
+	pinfo->esd_check_enabled = false;
+	pinfo->esd_check_enabled_second = false;
+#endif
 	pinfo->ulps_suspend_enabled = of_property_read_bool(np,
 		"qcom,suspend-ulps-enabled");
 	pr_info("%s: ulps during suspend feature %s", __func__,
@@ -1822,8 +1882,12 @@ static int mdss_panel_parse_dt(struct device_node *np,
 		, ctrl_pdata->vdd_vio_shutdown_enabled);
 	ctrl_pdata->lcd_backlight_min_value_limit = of_property_read_bool(np,
 			"zte,lcd-backlight-min-value-limit");
-	pr_info("%s:%d, lcd_backlight_min_value_limit %d\n", __func__, __LINE__
-		, ctrl_pdata->lcd_backlight_min_value_limit);
+	rc = of_property_read_u32(np, "zte,lcd-backlight-min-value", &tmp);
+	ctrl_pdata->lcd_backlight_min_value = (!rc ? tmp : 0);
+	pr_info("%s:%d, lcd_backlight_min_value_limit %d %d\n", __func__, __LINE__
+		, ctrl_pdata->lcd_backlight_min_value_limit, ctrl_pdata->lcd_backlight_min_value);
+	ctrl_pdata->lcd_backlight_save_power = of_property_read_bool(np,
+			"zte,lcd-backlight-save-power");
 	rc = of_property_read_u32(np, "qcom,mdss-brightness-max-level", &tmp);
 	pinfo->brightness_max = (!rc ? tmp : MDSS_MAX_BL_BRIGHTNESS);
 	rc = of_property_read_u32(np, "qcom,mdss-dsi-bl-min-level", &tmp);
@@ -2002,6 +2066,13 @@ static int mdss_panel_parse_dt(struct device_node *np,
 						mdss_dsi_gen_read_status;
 			ctrl_pdata->check_read_status_second =
 						mdss_dsi_gen_read_status_second;
+		} else if (!strcmp(data, "reg_read_jd9161")) {
+			ctrl_pdata->status_mode = ESD_REG;
+			ctrl_pdata->status_cmds_rlen = 3;
+			ctrl_pdata->check_read_status =
+						mdss_dsi_gen_read_status;
+			ctrl_pdata->check_read_status_second =
+						mdss_dsi_jd9161_gen_read_status_second;
 		} else if (!strcmp(data, "reg_read_nt35596")) {
 			ctrl_pdata->status_mode = ESD_REG_NT35596;
 			ctrl_pdata->status_error_count = 0;

@@ -786,86 +786,67 @@ void encode_rsp_and_send(int buf_length)
 
 /*begin-6 -diag security implementation-zhenghuan 2014/12/23*/
 #ifdef DIAG_LOCK_ON
-static int pkt_pass_permission_check(unsigned char *buf)
+
+#include "critical_diag_cmd.h"
+
+static int pkt_pass_permission_check(unsigned char *ptr)
 {
-	/******************************
-	2: Peek byte Request/Response
-	3: Peek word Request/Response
-	4: Peek dword Request/Response
-	5: Poke byte Request/Response
-	6: Poke word Request/Response
-	7: Poke dword Request/Response
-	8: Byte output Request/Response
-	9: Word output Request/Response
-	10: Byte input Request/Response
-	11: Word input Request/Response
-	15: Set logging mask Request/Response
-	16: Log packet Request/Response(+)
-	17: Peek at NV memory Request/Response
-	18: Poke at NV memory Request/Response
-	31: Request for msg report
-	53: Originate a call
-	58: reboot to dl (0x3A)
-	99: A state/status snapshot of the DMSS(-)
-	121: Request for extended msg report
-	********************************/
-	if (((*buf >= 2) && (*buf <= 11)) ||
-		((*buf >= 15) && (*buf <= 18)) ||
-		(*buf == 31) || /* (*buf == 66) || */
-		(*buf == 93) || (*buf == 121) ||
-		(*buf == 0x3A) || (*buf == 53)) {
-		return 0;
+	unsigned char cmd_code;
+	unsigned char subsys_id;
+	unsigned short subsys_cmd_code;
+	unsigned char *temp = ptr;
+	int size = sizeof(critical_diag_packets)/sizeof(diag_packet_type);
+	int i, match = 0;
+
+	cmd_code = *(unsigned char *)temp;
+	temp++;
+	subsys_id = *(unsigned char *)temp;
+	temp++;
+	subsys_cmd_code = *(unsigned short *)temp;
+
+	/* filter harmful diag commands */
+	for (i = 0; i < size; i++) {
+		switch (critical_diag_packets[i].packet_check_length) {
+		case 1: /* check length: 1 byte */
+			if (cmd_code == critical_diag_packets[i].cmd_code)
+				match = 1;
+			break;
+
+		case 2: /* check length: 2 bytes */
+			if ((cmd_code == critical_diag_packets[i].cmd_code) &&
+				(subsys_id == critical_diag_packets[i].subsys_id))
+					match = 1;
+			break;
+
+		case 4: /* check length: 4 bytes */
+			if ((cmd_code == critical_diag_packets[i].cmd_code) &&
+				(subsys_id == critical_diag_packets[i].subsys_id) &&
+				(subsys_cmd_code == critical_diag_packets[i].subsys_cmd_code))
+					match = 1;
+			break;
+
+		default:
+			break;
 		}
 
-	/*********************
-	75 15 05 00: GSM voice call
-	75 15 06 00: WCDMA voice call
-	75 15 27 00:
-	75 15 28 00:
-	**********************/
-	if ((*buf == 75) && (*(buf+1) == 15)) {
-		if (((*(buf+2) == 05) && (*(buf+3) == 00)) ||
-			((*(buf+2) == 06) && (*(buf+3) == 00)) ||
-			((*(buf+2) == 27) && (*(buf+3) == 00)) ||
-			((*(buf+2) == 28) && (*(buf+3) == 00))) {
+		if (match == 1)
 			return 0;
-		}
-	}
-
-	/****************************************
-	0x80 0x21 0x15 0xFA: Activate SIM lock
-	0x80 0x21 0x16 0xFA: Deactivate SIM lock
-	0x80 0x21 0x17 0xFA: Query for SIM lock status
-	0x80 0x21 0x18 0xFA: Set SIM lock parameter
-	0x80 0x21 0x21 0xFA: Set unlock key
-	*****************************************/
-	if ((*buf == 0x80) && (*(buf+1) == 0x21)) {
-		if (((*(buf+2) == 0x60) && (*(buf+3) == 0xEA)) ||
-			((*(buf+2) == 0x61) && (*(buf+3) == 0xEA)) ||
-			((*(buf+2) == 0x62) && (*(buf+3) == 0xEA)) ||
-			((*(buf+2) == 0x63) && (*(buf+3) == 0xEA)) ||
-			((*(buf+2) == 0x64) && (*(buf+3) == 0xEA)) ||
-			((*(buf+2) == 0x65) && (*(buf+3) == 0xEA)) ||
-			((*(buf+2) == 0x66) && (*(buf+3) == 0xEA)) ||
-			((*(buf+2) == 0x67) && (*(buf+3) == 0xEA))) {
-			return 0;
-		}
 	}
 
 	/*********************
 	75_251: unlock password
-	12: query modem status
-	00: query diag version number
-	38_71: read banner from NV
 	**********************/
 	if (!is_diag_locked() ||
-		((*buf == 75) && (*(buf+1) == 251))) {
+		((cmd_code == 75) && (subsys_id == 251))) {
 		return 1;
 	} else
 		return 0;
+
 }
+
 #endif
 /*end-6 -diag security implementation-zhenghuan 2014/12/23*/
+
 void diag_update_pkt_buffer(unsigned char *buf, int type)
 {
 	unsigned char *ptr = NULL;

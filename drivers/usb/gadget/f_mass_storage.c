@@ -221,8 +221,8 @@
 #include "gadget_chips.h"
 
 /* oem extended scsi command for adbd */
-int scsicmd_start_adbd(void);
-int scsicmd_stop_adbd(void);
+int scsicmd_enable_adb(int enable);
+int scsicmd_keep_cdrom(int enable);
 /* end */
 
 /*------------------------------------------------------------------------*/
@@ -1580,9 +1580,9 @@ static void open_diag_work(struct work_struct *w)
 	}
 }
 
-static int do_start_stop_usb_debug(struct fsg_common *common, struct fsg_buffhd *bh)
+static int do_usb_function_switch(struct fsg_common *common, struct fsg_buffhd *bh)
 {
-	int call_us_ret = -1;
+	int ret = 0;
 	u8 password[6] = { 0 };
 	int pindex, cindex;
 
@@ -1593,16 +1593,15 @@ static int do_start_stop_usb_debug(struct fsg_common *common, struct fsg_buffhd 
 		/* No special options */
 		switch (common->cmnd[5]) {
 		case 0x00: /* disable adbd */
-			call_us_ret = scsicmd_stop_adbd();
+			ret = scsicmd_enable_adb(0);
 			break;
 		case 0x01: /* enable adbd */
-			call_us_ret = scsicmd_start_adbd();
+			ret = scsicmd_enable_adb(1);
 			break;
 		case 0x10: /* disable diag */
 			diag_data.option = 0;
 			diag_data.passwd = NULL;
 			schedule_work(&diag_data.open_diag_work);
-			call_us_ret = 0;
 			break;
 		case 0x11: /* enable diag */
 			for (pindex = 0, cindex = 6; pindex < 6; pindex++, cindex++)
@@ -1612,16 +1611,42 @@ static int do_start_stop_usb_debug(struct fsg_common *common, struct fsg_buffhd 
 			diag_data.option = 1;
 			diag_data.passwd = password;
 			schedule_work(&diag_data.open_diag_work);
-			call_us_ret = 0;
 			break;
 		default:
 			pr_err("Unknown ZTE specific command...(0x%2.2X)\n", common->cmnd[5]);
 			break;
 		}
 	}
-	return 0;
+	return ret;
 }
 #endif
+
+/**************************************************
+* As do_usb_function_switch contains operation to adb,  it is data
+* security sensitive and it is eliminated if
+* ZTE_FEATURE_TF_SECURITY_SYSTEM macro is defined.
+* So, operate cdrom switch in this function.
+**************************************************/
+static int do_usb_cdrom_switch(struct fsg_common *common, struct fsg_buffhd *bh)
+{
+	int ret = 0;
+
+	if ((common->cmnd[1] == 'z') && (common->cmnd[2] == 't') && (common->cmnd[3] == 'e')) {
+
+		switch (common->cmnd[5]) {
+		case 0x20:
+			ret = scsicmd_keep_cdrom(0);
+			break;
+		case 0x21:
+			ret = scsicmd_keep_cdrom(1);
+			break;
+		default:
+			pr_err("Unknown ZTE specific command...(0x%2.2X)\n", common->cmnd[5]);
+			break;
+		}
+	}
+	return ret;
+}
 
 /******************************
  scsi response data type
@@ -2670,11 +2695,13 @@ static int do_scsi_command(struct fsg_common *common)
 		if (reply == 0)
 			reply = do_get_configuration(common, bh);
 		break;
+	case SC_USB_FUNCTION_SWITCH:
 #ifndef ZTE_FEATURE_TF_SECURITY_SYSTEM
-	case SC_START_STOP_USB_DEBUG:
-		reply = do_start_stop_usb_debug(common, bh);
-		break;
+		reply = do_usb_function_switch(common, bh);
 #endif
+		/* for cdrom2default switch */
+		reply = do_usb_cdrom_switch(common, bh);
+		break;
 	/*
 	 * Some mandatory commands that we recognize but don't implement.
 	 * They don't mean much in this setting.  It's left as an exercise

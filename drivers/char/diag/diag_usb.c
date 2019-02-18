@@ -32,11 +32,15 @@
 /*end-3 -TF project, encrypt the DiagPort -zhenghuan 2014/12/23*/
 #define DIAG_USB_STRING_SZ	10
 
+#ifdef ZTE_FEATURE_TF_SECURITY_SYSTEM
 #ifdef DIAG_LOCK_ON
 static int diag_locked = 1;
+#else
+static int diag_locked = 0;
 #endif
 
-#ifdef ZTE_FEATURE_TF_SECURITY_SYSTEM
+module_param(diag_locked, int, S_IRUGO);
+
 int is_diag_locked(void)
 {
 #ifdef DIAG_LOCK_ON
@@ -333,14 +337,30 @@ int diag_usb_write(int id, unsigned char *buf, int len, int ctxt)
 	}
 
 /*begin-2 -TF project, encrypt the DiagPort -zhenghuan 2014/12/23*/
+#ifdef ZTE_FEATURE_TF_SECURITY_SYSTEM
 #ifdef DIAG_LOCK_ON
 	if (diag_locked && ptr_buf[0] == 0x4b
 		&& ptr_buf[1] == 0xfb
 		&& ptr_buf[2] == 0x02
 		&& ptr_buf[3] == 0x00
-		&& ptr_buf[4] == 0x01) {  /*0x4b 0xfb 0x02 0x00 0x01 is TF unencrypt key*/
+		&& ptr_buf[4] == 0x01) {  /* diag unlock packets */
 		diag_locked = 0;
 	}
+#ifdef ZTE_FEATURE_TF_DEBUG
+	if (diag_locked && ptr_buf[0] == 0x4b
+		&& ptr_buf[1] == 0xfb
+		&& ptr_buf[2] == 0x02
+		&& ptr_buf[3] == 0x00) {
+			if (ptr_buf[4] == 0x03) {
+				/* diag debug build,  unlock */
+				diag_locked = 0;
+			} else if (ptr_buf[4] == 0x04) {
+				/* diag debug build,  lockup */
+				diag_locked = 1;
+			}
+	}
+#endif
+#endif
 #endif
 /*end-2 -TF project, encrypt the DiagPort -zhenghuan 2014/12/23*/
 

@@ -789,7 +789,6 @@ int __udp6_lib_rcv(struct sk_buff *skb, struct udp_table *udptable,
 	struct udphdr *uh;
 	const struct in6_addr *saddr, *daddr;
 	u32 ulen = 0;
-	kuid_t uid = GLOBAL_ROOT_UID;
 
 	if (!pskb_may_pull(skb, sizeof(struct udphdr)))
 		goto discard;
@@ -849,14 +848,14 @@ int __udp6_lib_rcv(struct sk_buff *skb, struct udp_table *udptable,
 			return -ret;
 
 		if ((tcp_socket_debugfs & 0x00000001)) {    /*ZTE_LC_TCP_DEBUG, 20170418 improved*/
-			uid = sock_i_uid(sk);
-			pr_info("[IP] UDP RCV len = %hu, "
-				"Gpid:%d (%s) [%d (%s)] (%pI6:%hu <- %pI6:%hu)\n",
-				ulen,
-				current->group_leader->pid, current->group_leader->comm,
-				current->pid, current->comm,
-				&ip_hdr(skb)->daddr, ntohs(uh->dest),
-				&ip_hdr(skb)->saddr, ntohs(uh->source));
+			if (!ip_hdr(skb))
+				pr_info("[IP] UDP RCV len = %hu, "
+					"Gpid:%d (%s) [%d (%s)] (%pI6:%hu <- %pI6:%hu)\n",
+					ulen,
+					current->group_leader->pid, current->group_leader->comm,
+					current->pid, current->comm,
+					&ip_hdr(skb)->daddr, ntohs(uh->dest),
+					&ip_hdr(skb)->saddr, ntohs(uh->source));
 		}
 		return 0;
 	}
@@ -1383,12 +1382,17 @@ static void udp6_sock_seq_show(struct seq_file *seq, struct sock *sp, int bucket
 	struct inet_sock *inet = inet_sk(sp);
 	struct ipv6_pinfo *np = inet6_sk(sp);
 	const struct in6_addr *dest, *src;
+	__u8 state = sp->sk_state;
 	__u16 destp, srcp;
 
 	dest  = &np->daddr;
 	src   = &np->rcv_saddr;
 	destp = ntohs(inet->inet_dport);
 	srcp  = ntohs(inet->inet_sport);
+
+	if (inet->transparent)
+		state |= 0x80;
+
 	seq_printf(seq,
 		   "%5d: %08X%08X%08X%08X:%04X %08X%08X%08X%08X:%04X "
 		   "%02X %08X:%08X %02X:%08lX %08X %5d %8d %lu %d %pK %d\n",
@@ -1397,7 +1401,7 @@ static void udp6_sock_seq_show(struct seq_file *seq, struct sock *sp, int bucket
 		   src->s6_addr32[2], src->s6_addr32[3], srcp,
 		   dest->s6_addr32[0], dest->s6_addr32[1],
 		   dest->s6_addr32[2], dest->s6_addr32[3], destp,
-		   sp->sk_state,
+		   state,
 		   sk_wmem_alloc_get(sp),
 		   sk_rmem_alloc_get(sp),
 		   0, 0L, 0,

@@ -1133,6 +1133,7 @@ static struct sock * tcp_v6_syn_recv_sock(struct sock *sk, struct sk_buff *skb,
 		newtp->af_specific = &tcp_sock_ipv6_mapped_specific;
 #endif
 
+		newnp->ipv6_mc_list = NULL;
 		newnp->ipv6_ac_list = NULL;
 		newnp->ipv6_fl_list = NULL;
 		newnp->pktoptions  = NULL;
@@ -1200,6 +1201,7 @@ static struct sock * tcp_v6_syn_recv_sock(struct sock *sk, struct sk_buff *skb,
 	   First: no IPv4 options.
 	 */
 	newinet->inet_opt = NULL;
+	newnp->ipv6_mc_list = NULL;
 	newnp->ipv6_ac_list = NULL;
 	newnp->ipv6_fl_list = NULL;
 
@@ -1524,10 +1526,12 @@ process:
 			if (!tcp_prequeue(sk, skb))
 				ret = tcp_v6_do_rcv(sk, skb);
 			if ((tcp_socket_debugfs & 0x00000001)) {    /*ZTE_LC_TCP_DEBUG, 20170418 improved*/
+				kuid_t uid = sock_i_uid(sk);
 
-				pr_info("[IP] TCP RCV len = %hu, "
+				pr_info("[IP] TCP RCV len = %hu uid=%d, "
 					"Gpid:%d (%s) [%d (%s)] (%pI6:%hu <- %pI6:%hu)\n",
 					ntohs(hdr->payload_len),
+					uid,
 					current->group_leader->pid, current->group_leader->comm,
 					current->pid, current->comm,
 					&hdr->daddr, ntohs(th->dest),
@@ -1778,6 +1782,7 @@ static void get_tcp6_sock(struct seq_file *seq, struct sock *sp, int i)
 	const struct tcp_sock *tp = tcp_sk(sp);
 	const struct inet_connection_sock *icsk = inet_csk(sp);
 	const struct ipv6_pinfo *np = inet6_sk(sp);
+	__u8 state = sp->sk_state;
 
 	dest  = &np->daddr;
 	src   = &np->rcv_saddr;
@@ -1798,6 +1803,9 @@ static void get_tcp6_sock(struct seq_file *seq, struct sock *sp, int i)
 		timer_expires = jiffies;
 	}
 
+	if (inet->transparent)
+		state |= 0x80;
+
 	seq_printf(seq,
 		   "%4d: %08X%08X%08X%08X:%04X %08X%08X%08X%08X:%04X "
 		   "%02X %08X:%08X %02X:%08lX %08X %5d %8d %lu %d %pK %lu %lu %u %u %d\n",
@@ -1806,7 +1814,7 @@ static void get_tcp6_sock(struct seq_file *seq, struct sock *sp, int i)
 		   src->s6_addr32[2], src->s6_addr32[3], srcp,
 		   dest->s6_addr32[0], dest->s6_addr32[1],
 		   dest->s6_addr32[2], dest->s6_addr32[3], destp,
-		   sp->sk_state,
+		   state,
 		   tp->write_seq-tp->snd_una,
 		   (sp->sk_state == TCP_LISTEN) ? sp->sk_ack_backlog : (tp->rcv_nxt - tp->copied_seq),
 		   timer_active,

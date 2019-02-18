@@ -2394,8 +2394,8 @@ static ssize_t ltr559_set_calibrate_data_store(struct device *dev,
 	int i,	j;
 	u16 prox_threshold_hi = 0;
 	u16 prox_threshold_lo = 0;
-	u8 prox_pulse_cnt = 0;
-	u8 prox_gain = 0;
+	u16 prox_pulse_cnt = 0;
+	u16 prox_gain = 0;
 	char cal_data_char[4][20] = {{0} , {0} , {0} , {0} };
 	char buf_data[100] = {0};
 	char *tmp = buf_data;
@@ -2495,8 +2495,8 @@ static struct device_attribute ltr559_attributes[] = {
 	__ATTR(setpshithrerange,	0220,	NULL,	setpshithrerange_store),
 	__ATTR(disppsthrerange,	0444,	disppsthrerange_show,	NULL),
 	__ATTR(ltr559_reg,	0444,	ltr559_reg_show,	NULL),
-	__ATTR(calibrate,	0664,	ltr559_calibrate_show,	ltr559_calibrate_store),
-	__ATTR(set_calibrate_data,	0222,	NULL,	ltr559_set_calibrate_data_store),
+	__ATTR(calibrate,	0660,	ltr559_calibrate_show,	ltr559_calibrate_store),
+	__ATTR(set_calibrate_data,	0660,	NULL,	ltr559_set_calibrate_data_store),
 };
 
 static int create_sysfs_interfaces(struct device *dev)

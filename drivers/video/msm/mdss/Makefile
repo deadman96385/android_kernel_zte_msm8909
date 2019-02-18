@@ -27,6 +27,9 @@ endif
 ifeq ($(ZTE_DISABLE_CABL_ON_MAX_BRIGHTNESS), true)
 ccflags-y += -DZTE_DISABLE_CABL_ON_MAX_BRIGHTNESS
 endif
+ifeq ($(ZTE_ENABLE_BRIGHTNESS_CURVE), true)
+ccflags-y += -DZTE_ENABLE_BRIGHTNESS_CURVE
+endif
 mdss-dsi-objs := mdss_dsi.o mdss_dsi_host.o mdss_dsi_cmd.o mdss_dsi_status.o
 mdss-dsi-objs += mdss_dsi_panel.o
 mdss-dsi-objs += msm_mdss_io_8974.o

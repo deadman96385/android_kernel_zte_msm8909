@@ -862,6 +862,7 @@ static void kgsl_destroy_process_private(struct kref *kref)
 	kgsl_mmu_putpagetable(private->pagetable);
 
 	kfree(private);
+	private = NULL;
 	return;
 }
 
@@ -1005,6 +1006,8 @@ static void kgsl_process_private_close(struct kgsl_device_private *dev_priv,
 	 */
 
 	kgsl_process_uninit_sysfs(private);
+	if (private == NULL)
+		pr_err("%s:%d, !!!private is null\n", __func__, __LINE__);
 	debugfs_remove_recursive(private->debug_root);
 
 	process_release_sync_sources(private);
@@ -2587,9 +2590,9 @@ long kgsl_ioctl_drawctxt_create(struct kgsl_device_private *dev_priv,
 	/* Commit the pointer to the context in context_idr */
 	write_lock(&device->context_lock);
 	idr_replace(&device->context_idr, context, context->id);
+	param->drawctxt_id = context->id;
 	write_unlock(&device->context_lock);
 
-	param->drawctxt_id = context->id;
 done:
 	mutex_unlock(&device->mutex);
 	return result;

@@ -139,7 +139,12 @@ static void swap_fn(struct work_struct *work)
 			continue;
 
 		oom_score_adj = p->signal->oom_score_adj;
-		if (oom_score_adj < min_score_adj) {
+		/*
+		 * we limit app which adj above 800 which means it donot host service
+		 * from being memory reclaimed as it will be killed very soon
+		 */
+		if (oom_score_adj < min_score_adj ||
+			oom_score_adj > 800) {
 			task_unlock(p);
 			continue;
 		}
@@ -217,6 +222,7 @@ static void swap_fn(struct work_struct *work)
 	}
 }
 
+static unsigned long lowmem_shrink_timeout = 0;
 static int vmpressure_notifier(struct notifier_block *nb,
 			unsigned long action, void *data)
 {
@@ -230,6 +236,11 @@ static int vmpressure_notifier(struct notifier_block *nb,
 
 	if (0 <= atomic_dec_if_positive(&skip_reclaim))
 		return 0;
+
+	if (time_before_eq(jiffies, lowmem_shrink_timeout)) {
+		return 0;
+	}
+	lowmem_shrink_timeout = jiffies + 60*HZ;
 
 	if ((pressure >= pressure_min) && (pressure < pressure_max))
 		if (!work_pending(&swap_work))

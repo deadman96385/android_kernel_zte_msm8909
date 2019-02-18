@@ -625,6 +625,13 @@ static uint16_t ratioHysterisis(uint16_t ch0_adc, uint16_t ch1_adc)
 	if ((buffer[0] & 0x20) == 0x20)
 		ch0_calc = ch0_adc - ch1_adc;
 
+#if defined(CONFIG_BOARD_SWEET)
+	if (ch1_adc > 46000) {
+		if (ch0_calc > (ch1_adc/3))
+			ch0_calc = ch1_adc/3;
+	}
+#endif
+
 	if ((ch1_adc + ch0_calc) == 0)
 		ratio = 100;
 	else
@@ -811,7 +818,11 @@ static uint16_t read_als_adc_value(struct ltr559_data *ltr559)
 
 	}
 
+#if defined(CONFIG_BOARD_SWEET)
+	if (value > MAX_VAL)
+#else
 	if ((value > MAX_VAL) || (((ch0_val + ch1_val) > MAX_VAL) && (temp & 0x80)))
+#endif
 		value = MAX_VAL;
 
 	lux_val_prev = value;
@@ -3903,7 +3914,11 @@ static int ltr559_probe(struct i2c_client *client,
 	INIT_DELAYED_WORK(&ltr559->als_dwork,	ltr559_als_polling_work_func);
 
 	/* Register the sysfs files */
+#ifndef ZTE_FASTMMI_MANUFACTURING_VERSION
 	ret = create_sysfs_interfaces(&client->dev);
+#else
+	ret = create_sysfs_interfaces(&ltr559->ps_input_dev->dev);
+#endif
 	if (ret < 0) {
 		dev_err(&client->dev,
 			 "sysfs register failed\n");
@@ -3918,6 +3933,7 @@ static int ltr559_probe(struct i2c_client *client,
 	ltr559->ps_cdev.sensors_enable = ltr559_ps_set_enable;
 	ltr559->ps_cdev.sensors_poll_delay = NULL,
 
+#ifndef ZTE_FASTMMI_MANUFACTURING_VERSION
 	ret = sensors_classdev_register(&client->dev,	&ltr559->als_cdev);
 	if (ret) {
 		pr_err("%s: Unable to register to sensors class: %d\n",
@@ -3931,6 +3947,21 @@ static int ltr559_probe(struct i2c_client *client,
 					 __func__,	ret);
 		goto err_ltr559_class_sysfs;
 	}
+#else
+	ret = sensors_classdev_register(&ltr559->als_input_dev->dev,	&ltr559->als_cdev);
+	if (ret) {
+		pr_err("%s: Unable to register to sensors class: %d\n",
+			 __func__,	ret);
+		goto err_ltr559_sysfs_create;
+	}
+
+	ret = sensors_classdev_register(&ltr559->ps_input_dev->dev,	&ltr559->ps_cdev);
+	if (ret) {
+		pr_err("%s: Unable to register to sensors class: %d\n",
+					 __func__,	ret);
+		goto err_ltr559_class_sysfs;
+	}
+#endif
 
 	dev_dbg(&ltr559->i2c_client->dev,	"%s: probe complete\n", __func__);
 	is_ltr559_probe_succ_flag = 1;

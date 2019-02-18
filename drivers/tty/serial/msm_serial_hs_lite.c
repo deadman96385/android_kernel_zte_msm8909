@@ -18,6 +18,8 @@
  * This file is based on msm_serial.c, originally
  * Written by Robert Love <rlove@google.com>  */
 
+#if defined(ZTE_FEATURE_TF_DEBUG)
+
 #define pr_fmt(fmt) "%s: " fmt, __func__
 
 #if defined(CONFIG_SERIAL_MSM_HSL_CONSOLE) && defined(CONFIG_MAGIC_SYSRQ)
@@ -1995,3 +1997,5 @@ module_exit(msm_serial_hsl_exit);
 
 MODULE_DESCRIPTION("Driver for msm HSUART serial device");
 MODULE_LICENSE("GPL v2");
+
+#endif

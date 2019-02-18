@@ -2765,8 +2765,9 @@ static void ext4_free_data_callback(struct super_block *sb,
 	 * If the volume is mounted with -o discard, online discard
 	 * is supported and the free blocks will be trimmed online.
 	 */
-	if (!test_opt(sb, DISCARD))
+	if (!test_opt(sb, DISCARD) || !test_opt2(sb, NOCOEXIST)) {
 		EXT4_MB_GRP_CLEAR_TRIMMED(db);
+	}
 
 	if (!db->bb_free_root.rb_node) {
 		/* No more items in the per group rb tree
@@ -4771,6 +4772,8 @@ do_more:
 					 " group:%d block:%d count:%lu failed"
 					 " with %d", block_group, bit, count,
 					 err);
+			if (!test_opt2(sb, NOCOEXIST))
+				EXT4_MB_GRP_CLEAR_TRIMMED(e4b.bd_info);
 		} else
 			EXT4_MB_GRP_CLEAR_TRIMMED(e4b.bd_info);
 

@@ -357,6 +357,8 @@ struct wcd_mbhc {
 	/* Delayed work to report long button press */
 	struct delayed_work mbhc_btn_dwork;
 	int buttons_pressed;
+	struct delayed_work mbhc_headset_insert_dwork;
+	bool fake_btn;
 	struct wcd_mbhc_config *mbhc_cfg;
 	const struct wcd_mbhc_cb *mbhc_cb;
 

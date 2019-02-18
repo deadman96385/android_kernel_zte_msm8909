@@ -307,8 +307,8 @@ xt_socket_get6_print(struct sk_buff *skb, int direction)
 
 	strlcat(string, dirstr, sizeof(string));
 
-	pr_info("[IP]%s %d Gpid:%d (%s) %pI6:%hu -> %pI6:%hu\n",
-		string, ulen, current->group_leader->pid, current->group_leader->comm,
+	pr_info("[IP]%s %d uid = %d Gpid:%d (%s) %pI6:%hu -> %pI6:%hu\n",
+		string, ulen, uid, current->group_leader->pid, current->group_leader->comm,
 		saddr, ntohs(sport),
 		daddr, ntohs(dport));
 }

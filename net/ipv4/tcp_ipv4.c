@@ -1965,6 +1965,7 @@ int tcp_v4_rcv(struct sk_buff *skb)
 	const struct tcphdr *th;
 	struct sock *sk;
 	int ret;
+	char stmp[50];
 	struct net *net = dev_net(skb->dev);
 
 	if (skb->pkt_type != PACKET_HOST)
@@ -2038,14 +2039,18 @@ process:
 				ret = tcp_v4_do_rcv(sk, skb);
 /*ZTE_LC_TCP_DEBUG, 20170417 improved */
 			if (tcp_socket_debugfs & 0x00000001) {
+				if (strcmp(inet_ntop(AF_INET, &iph->saddr, stmp, 50), "127.0.0.1")) {
+					kuid_t uid = sock_i_uid(sk);
 
-				pr_info("[IP] TCP RCV len = %hu, "
-					"Gpid:%d (%s) [%d (%s)] (%pI4:%hu <- %pI4:%hu)\n",
-					ntohs(iph->tot_len),
-					current->group_leader->pid, current->group_leader->comm,
-					current->pid, current->comm,
-					&iph->daddr, ntohs(th->dest),
-					&iph->saddr, ntohs(th->source));
+					pr_info("[IP] TCP RCV len = %hu  uid=%d, "
+						"Gpid:%d (%s) [%d (%s)] (%pI4:%hu <- %pI4:%hu)\n",
+						ntohs(iph->tot_len),
+						uid,
+						current->group_leader->pid, current->group_leader->comm,
+						current->pid, current->comm,
+						&iph->daddr, ntohs(th->dest),
+						&iph->saddr, ntohs(th->source));
+				}
 			}
 		}
 	} else if (unlikely(sk_add_backlog(sk, skb,
@@ -2671,6 +2676,7 @@ static void get_tcp4_sock(struct sock *sk, struct seq_file *f, int i)
 	__be32 src = inet->inet_rcv_saddr;
 	__u16 destp = ntohs(inet->inet_dport);
 	__u16 srcp = ntohs(inet->inet_sport);
+	__u8 state = sk->sk_state;
 	int rx_queue;
 
 	if (icsk->icsk_pending == ICSK_TIME_RETRANS ||
@@ -2689,6 +2695,9 @@ static void get_tcp4_sock(struct sock *sk, struct seq_file *f, int i)
 		timer_expires = jiffies;
 	}
 
+	if (inet->transparent)
+		state |= 0x80;
+
 	if (sk->sk_state == TCP_LISTEN)
 		rx_queue = sk->sk_ack_backlog;
 	else
@@ -2699,7 +2708,7 @@ static void get_tcp4_sock(struct sock *sk, struct seq_file *f, int i)
 
 	seq_printf(f, "%4d: %08X:%04X %08X:%04X %02X %08X:%08X %02X:%08lX "
 			"%08X %5d %8d %lu %d %pK %lu %lu %u %u %d",
-		i, src, srcp, dest, destp, sk->sk_state,
+		i, src, srcp, dest, destp, state,
 		tp->write_seq - tp->snd_una,
 		rx_queue,
 		timer_active,
