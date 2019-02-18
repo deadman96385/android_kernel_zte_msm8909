@@ -11580,6 +11580,8 @@ void _DrvFwCtrlMutualHandleFingerTouch(void) /* for MSG26xxM/MSG28xx */
 				if (tInfo.nKeyCode != nLastKeyCode) {
 					DBG(&g_I2cClient->dev, "key touch pressed %d\n", tInfo.nKeyCode);
 
+					pr_info("mstar key touch pressed %d\n", tInfo.nKeyCode);
+
 					input_report_key(g_InputDevice, BTN_TOUCH, 1);
 					switch (tInfo.nKeyCode) {
 					case 0:
@@ -11601,8 +11603,14 @@ void _DrvFwCtrlMutualHandleFingerTouch(void) /* for MSG26xxM/MSG28xx */
 						break;
 					}
 
-					DrvPlatformLyrFingerTouchPressed(input_x, input_y, input_w, tInfo.nKeyCode);
+					input_mt_slot(g_InputDevice, 0);
+					input_mt_report_slot_state(g_InputDevice,
+								MT_TOOL_FINGER, 1);
+					input_report_key(g_InputDevice, BTN_TOUCH, 1);
 					input_report_key(g_InputDevice, BTN_TOOL_FINGER, 1);
+					input_report_abs(g_InputDevice, ABS_MT_POSITION_X, input_x);
+					input_report_abs(g_InputDevice, ABS_MT_POSITION_Y, input_y);
+					input_report_abs(g_InputDevice, ABS_MT_PRESSURE, input_w);
 
 					input_sync(g_InputDevice);
 
@@ -11616,11 +11624,10 @@ void _DrvFwCtrlMutualHandleFingerTouch(void) /* for MSG26xxM/MSG28xx */
 			}
 		} else {                    /* key touch released */
 			if (nLastKeyCode != 0xFF) {
-				DBG(&g_I2cClient->dev, "key touch released\n");
+				pr_info("mstar key touch released. %d\n", nLastKeyCode);
 
-				input_report_key(g_InputDevice, BTN_TOUCH, 0);
-				input_report_key(g_InputDevice, BTN_TOOL_FINGER, 0);
-				DrvPlatformLyrFingerTouchReleased(0, 0, nLastKeyCode);
+				input_mt_slot(g_InputDevice, 0);
+				input_mt_report_slot_state(g_InputDevice, MT_TOOL_FINGER, 0);
 				input_sync(g_InputDevice);
 
 				nLastKeyCode = 0xFF;
