@@ -3437,21 +3437,26 @@ static bool is_valid_function(char *functions)
 
 	while (functions) {
 		name = strsep(&functions, ",");
+		/* rndis, permenant off. */
+		if (!name || strnstr(name, "rndis", sizeof(name))) {
+			pr_err("zh: %s is not valid function!\n", name);
+			return false;
+		}
 		/* serial, only single smd channel is allowed. */
-		if (!name || (!strcmp(name, "serial") && strcmp(serial_transports, "smd") > 0)) {
-			pr_err("serial_transports = %s ,include invalid function\n", serial_transports);
+		else if (!name || (!strcmp(name, "serial") && strcmp(serial_transports, "smd") > 0)) {
+			pr_err("zh: serial_transports = %s ,include invalid function\n", serial_transports);
 			return false;
 		}
 		/* rmnet, off when diag is locked. */
 		else if (!name || ((strnstr(name, "rmnet", sizeof(name)) /*add more here*/) && is_diag_locked())) {
-			pr_err("%s is not valid function!\n", name);
+			pr_err("zh: %s is not valid function!\n", name);
 			return false;
 		}
 		/* Below functions are not allowed too, in case of potential threat. */
 		if (!name || strnstr(name, "mbim", sizeof(name)) || strnstr(name, "ecm", sizeof(name))
 			|| strnstr(name, "qdss", sizeof(name)) || strnstr(name, "ccid", sizeof(name))
 			|| strnstr(name, "acm", sizeof(name)) || strnstr(name, "ncm", sizeof(name))) {
-			pr_err("%s is not valid function!\n", name);
+			pr_err("zh: %s is not valid function!\n", name);
 			return false;
 		}
 	}

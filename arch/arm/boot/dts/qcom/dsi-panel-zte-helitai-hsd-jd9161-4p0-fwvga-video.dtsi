@@ -16,7 +16,7 @@
 		qcom,mdss-dsi-panel-controller = <&mdss_dsi0>;
 		qcom,mdss-dsi-panel-type = "dsi_video_mode";
 		qcom,mdss-dsi-panel-destination = "display_1";
-		qcom,mdss-dsi-panel-framerate = <57>;
+		qcom,mdss-dsi-panel-framerate = <60>;
 		qcom,mdss-dsi-virtual-channel-id = <0>;
 		qcom,mdss-dsi-stream = <0>;
 		qcom,mdss-pan-physical-height-dimension = <110>;
@@ -40,25 +40,21 @@
 		qcom,mdss-dsi-border-color = <0>;
 		qcom,mdss-dsi-on-command = [
 			39 01 00 00 00 00 04 BF 91 61 F2
-			39 01 00 00 00 00 03 B3 00 BD
-			39 01 00 00 00 00 03 B4 00 BF
+			39 01 00 00 00 00 05 B3 00 AF 00 AF
 			39 01 00 00 00 00 07 B8 00 BF 01 00 BF 01
 			39 01 00 00 00 00 04 BA 3E 23 00
 			39 01 00 00 00 00 02 C3 02
 			39 01 00 00 00 00 03 C4 00 64
 			39 01 00 00 00 00 0A C7 00 01 32 05 65 2B 12 A5 A5
-			39 01 00 00 00 00 27 C8 7F 78 68 5A 49 34 34 1C 37 38 3B 5E 52 63 5C
-				64 5E 58 4E 7F 78 68 5A 49 34 34 1C 37 38 3B 5E 52 63 5C 64 5E 58 4E
-			39 01 00 00 00 00 06 D0 2E 00 01 03 80
+			39 01 00 00 00 00 27 C8 7E 6C 52 3F 35 23 27 12 2E 31 35 59 4E 60 5A 62 5D 57 4E 7E 6C 52 3F 35 23 27 12 2E 31 35 59 4E 60 5A 62 5D 57 4E
 			39 01 00 00 00 00 11 D4 1E 1F 17 37 06 04 0A 08 00 02 1F 1F 1F 1F 1F 1F
 			39 01 00 00 00 00 11 D5 1E 1F 17 37 07 05 0B 09 01 03 1F 1F 1F 1F 1F 1F
-			39 01 00 00 00 00 11 D6 1F 1E 17 17 09 0B 05 07 03 01 1F 1F 1F 1F 1F 1F
-			39 01 00 00 00 00 11 D7 1F 1E 17 17 08 0A 04 06 02 00 1F 1F 1F 1F 1F 1F
+			39 01 00 00 00 00 11 D6 1F 1E 17 17 07 09 0B 05 03 01 1F 1F 1F 1F 1F 1F
+			39 01 00 00 00 00 11 D7 1F 1E 17 17 06 08 0A 04 02 00 1F 1F 1F 1F 1F 1F
 			39 01 00 00 00 00 15 D8 20 00 00 30 03 30 01 02 00 01 02 06 70 00 00 73 07 06 70 08
 			39 01 00 00 00 00 14 D9 00 0A 0A 80 00 00 06 7b 00 80 00 33 6A 1F 00 00 00 03 7b
 			39 01 00 00 00 00 02 35 00
 			39 01 00 00 00 00 02 BE 01
-			39 01 00 00 00 00 02 C1 10
 			39 01 00 00 00 00 0B CC 34 20 38 60 11 91 00 40 00 00
 			39 01 00 00 00 00 02 BE 00
 			39 01 00 00 00 00 02 51 00  //50% duty

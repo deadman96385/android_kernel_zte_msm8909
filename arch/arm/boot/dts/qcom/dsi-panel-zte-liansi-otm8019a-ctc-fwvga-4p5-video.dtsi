@@ -141,9 +141,9 @@
 			39 01 00 00 00 00 03 CF 02 82
 
 			39 01 00 00 00 00 02 00 00
-			39 01 00 00 00 00 15 E1 00 04 08 13 27 3e 47 79 68 7e 89 78 90 7b 81 7a 72 68 5d 04
+			39 01 00 00 00 00 15 E1 00 02 05 09 10 1f 2a 6a 5f 78 8E 7C 94 7f 85 7d 75 66 5e 04
 			39 01 00 00 00 00 02 00 00
-			39 01 00 00 00 00 15 E2 00 04 08 13 27 3e 47 79 68 7e 89 78 90 7b 81 7a 72 68 5d 04
+			39 01 00 00 00 00 15 E2 00 02 05 09 10 1f 2a 6a 5f 77 8E 7C 94 7f 84 7c 76 66 5e 04
 
 			39 01 00 00 00 00 02 00 80
 			39 01 00 00 00 00 02 C4 30
@@ -152,13 +152,13 @@
 			39 01 00 00 00 00 02 C0 00
 
 			39 01 00 00 00 00 02 00 a9
-			39 01 00 00 00 00 02 C0 0A
+			39 01 00 00 00 00 02 C0 06
 
 			39 01 00 00 00 00 02 00 b0
 			39 01 00 00 00 00 04 C1 20 00 00
 
 			39 01 00 00 00 00 02 00 e1
-			39 01 00 00 00 00 03 C0 40 30
+			39 01 00 00 00 00 03 C0 40 18
 
 			39 01 00 00 00 00 02 00 80
 			39 01 00 00 00 00 03 C1 03 33
@@ -170,7 +170,7 @@
 			39 01 00 00 00 00 02 b6 b4
 
 			39 01 00 00 00 00 02 00 b0 //set pwm freq 28.1k according to wangjingyi, 20160817
-			39 01 00 00 0a 00 02 ca 03
+			39 01 00 00 00 00 02 ca 03
 
 			39 01 00 00 00 00 02 00 00
 			39 01 00 00 00 00 04 FF FF FF FF
@@ -214,11 +214,6 @@
 		//qcom,mdss-dsi-bl-cmd-gpio =  <&msm_gpio 97 0>;
 		qcom,mdss-dsi-bl-pmic-control-type = "bl_ctrl_dcs";
 		qcom,mdss-dsi-reset-sequence = <1 20>, <0 20>, <1 20>;
-		qcom,mdss-dsi-panel-status-command = [14 01 00 01 05 00 01 0A];
-		qcom,mdss-dsi-panel-status-command-mode = "dsi_lp_mode";
-		qcom,mdss-dsi-panel-status-check-mode = "reg_read";
-		qcom,mdss-dsi-panel-status-read-length = <1>;
-		qcom,mdss-dsi-panel-status-value = <0x9C>;
-		qcom,esd-check-enabled;
+
 	};
 };

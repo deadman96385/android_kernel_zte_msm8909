@@ -55,7 +55,7 @@
 			vdd-supply = <&pm8909_l17>;
 			vio-supply = <&pm8909_l6>;
 			mcube,init-interval = <200>;
-			mcube,place = <0>;
+			mcube,place = <7>;
 			mcube,use-interrupt = <0>;
 			mcube,gpio-int = <&msm_gpio 96 0x2002>;
 		};

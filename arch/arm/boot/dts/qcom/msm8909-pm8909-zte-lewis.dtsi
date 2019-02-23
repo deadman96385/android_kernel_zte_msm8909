@@ -66,19 +66,6 @@
 			n2dm,fs-range = <0>;
 		};
 
-		mcube@4c { /* Accelerometer sensor */
-			compatible = "mcube,mc3xxx";
-			reg = <0x4c>;
-			interrupt-parent = <&msm_gpio>;
-			interrupts = <96 0x2002>;
-			vdd-supply = <&pm8909_l17>;
-			vio-supply = <&pm8909_l6>;
-			mcube,init-interval = <200>;
-			mcube,place = <5>;
-			mcube,use-interrupt = <0>;
-			mcube,gpio-int = <&msm_gpio 96 0x2002>;
-		};
-
 		ltr559@23 {
 			compatible = "liteon,ltr559";
 			reg = <0x23>;

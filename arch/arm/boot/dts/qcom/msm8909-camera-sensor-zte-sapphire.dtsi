@@ -14,22 +14,6 @@
 &soc {
 };
 
-&cam_sensor_mclk0_default {
-	drive-strength = <6>; /* 6 MA */
-};
-
-&cam_sensor_mclk0_sleep {
-	drive-strength = <6>; /* 6 MA */
-};
-
-&cam_sensor_mclk1_default {
-	drive-strength = <6>; /* 6 MA */
-};
-
-&cam_sensor_mclk1_sleep {
-	drive-strength = <6>; /* 6 MA */
-};
-
 &i2c_3 {
 
 	qcom,camera@0 {

@@ -34,7 +34,6 @@
 #include <linux/power/max17055_battery.h>
 #include <linux/of.h>
 #include <linux/regmap.h>
-#include <linux/qpnp/qpnp-adc.h>
 
 /* Status register bits */
 #define STATUS_POR_BIT			(1 << 1)
@@ -71,8 +70,6 @@
 #define MAX17055_IC_VERSION_A		0x4000
 #define MAX17055_IC_VERSION_B		0x4010
 #define MAX17055_DRIVER_VERSION		0x1060
-#define MAX17055_DRIVER_VERSION_GY	0x2060
-
 #define MAX17055_BATT_ID_ATL		(0x01)
 
 struct max17055_chip {
@@ -85,11 +82,7 @@ struct max17055_chip {
 	int    init_complete;
 	struct delayed_work register_dump_work;
 	struct power_supply *battery_psy;
-	struct qpnp_vadc_chip *vadc_dev;
-	int	version;
 };
-
-static struct max17055_chip *maxim_chip;
 
 static enum power_supply_property max17055_battery_props[] = {
 	POWER_SUPPLY_PROP_PRESENT,
@@ -497,15 +490,13 @@ static int max17055_get_property(struct power_supply *psy,
 		if (ret < 0)
 			return ret;
 
-		if (data > MAX17055_SOC_ROUND_THD) {
+		if (data > MAX17055_SOC_ROUND_THD)
 			val->intval = (data + 0x7f) >> 8;
-		} else {
+		else
 			val->intval = data >> 8;
-		}
 
-		if (val->intval > 100) {
+		if (val->intval > 100)
 			val->intval = 100;
-		}
 
 		break;
 	case POWER_SUPPLY_PROP_CHARGE_FULL:
@@ -1098,9 +1089,8 @@ static int max17055_get_battid(void)
 
 #ifdef CONFIG_OF
 static struct max17055_platform_data *
-max17055_get_pdata(struct max17055_chip *chip)
+max17055_get_pdata(struct device *dev)
 {
-	struct device *dev = &chip->client->dev;
 	struct device_node *np = dev->of_node;
 	u32 prop;
 	struct max17055_platform_data *pdata;
@@ -1137,13 +1127,9 @@ max17055_get_pdata(struct max17055_chip *chip)
 
 	pdata->config_data = devm_kzalloc(dev, sizeof(*(pdata->config_data)), GFP_KERNEL);
 	if (pdata->config_data) {
-		if (chip->version == MAX17055_DRIVER_VERSION) {
-			of_property_read_u16_array(np, "maxim,config-data",
-				(u16 *)pdata->config_data, sizeof(*(pdata->config_data))/sizeof(u16));
-		} else {
-			of_property_read_u16_array(np, "maxim,config-data-gy",
-				(u16 *)pdata->config_data, sizeof(*(pdata->config_data))/sizeof(u16));
-		}
+		of_property_read_u16_array(np, "maxim,config-data",
+			(u16 *)pdata->config_data, sizeof(*(pdata->config_data))/sizeof(u16));
+
 		/*for (i = 0; i < sizeof(*(pdata->config_data))/sizeof(u16); i++)
 			pr_info("%03d [%04x]\n", i, ((u16 *)pdata->config_data)[i]);*/
 	}
@@ -1162,10 +1148,8 @@ max17055_get_pdata(struct max17055_chip *chip)
 }
 #else
 static struct max17055_platform_data *
-max17055_get_pdata(struct max17055_chip *chip)
+max17055_get_pdata(struct device *dev)
 {
-	struct device *dev = &chip->client->dev;
-
 	return dev->platform_data;
 }
 #endif
@@ -1223,44 +1207,6 @@ static struct device_attribute max17055_data_logging_attr =
 		__ATTR(data_logging, S_IRUGO | S_IWUSR | S_IWGRP,
 				max17055_data_logging_show,
 				max17055_data_logging_store);
-static int64_t read_battery_id(struct max17055_chip *chip)
-{
-	int rc;
-	struct qpnp_vadc_result result;
-
-	rc = qpnp_vadc_read(chip->vadc_dev, LR_MUX2_BAT_ID, &result);
-	if (rc) {
-		pr_err("error reading batt id channel = %d, rc = %d\n",
-					LR_MUX2_BAT_ID, rc);
-		return rc;
-	}
-	pr_info("read_battery_id:%lld\n", result.physical);
-	return result.physical;
-}
-
-static int max17055_get_adc(struct max17055_chip *chip)
-{
-	int rc = 0;
-
-	chip->vadc_dev = qpnp_get_vadc(&chip->client->dev, "max17055");
-	if (IS_ERR(chip->vadc_dev)) {
-		rc = PTR_ERR(chip->vadc_dev);
-		if (rc == -EPROBE_DEFER)
-			pr_err("vadc not found - defer probe rc=%d\n", rc);
-		else
-			pr_err("vadc property missing, rc=%d\n", rc);
-
-		return rc;
-	}
-
-	return rc;
-}
-
-int get_design_capacity(void)
-{
-	struct max17055_config_data *config = maxim_chip->pdata->config_data;
-	return ((config->design_cap) / 2);
-}
 
 static int max17055_probe(struct i2c_client *client,
 			const struct i2c_device_id *id)
@@ -1268,7 +1214,7 @@ static int max17055_probe(struct i2c_client *client,
 	struct i2c_adapter *adapter = to_i2c_adapter(client->dev.parent);
 	struct max17055_chip *chip;
 	int ret;
-	int i, rc;
+	int i;
 	u32 val, driver_version;
 
 
@@ -1280,31 +1226,17 @@ static int max17055_probe(struct i2c_client *client,
 		return -ENOMEM;
 
 	chip->client = client;
-	rc = max17055_get_adc(chip);
-	if (rc < 0) {
-		pr_err("Failed to get adc rc=%d\n", rc);
-		devm_kfree(&client->dev, chip);
-		return rc;
-	}
-
-	if (read_battery_id(chip) < 50000)
-		chip->version = MAX17055_DRIVER_VERSION_GY;
-	else
-		chip->version = MAX17055_DRIVER_VERSION;
-
 	chip->regmap = devm_regmap_init_i2c(client, &max17055_regmap_config);
 	if (IS_ERR(chip->regmap)) {
 		dev_err(&client->dev, "Failed to initialize regmap\n");
 		return -EINVAL;
 	}
 
-	chip->pdata = max17055_get_pdata(chip);
+	chip->pdata = max17055_get_pdata(&client->dev);
 	if (!chip->pdata) {
 		dev_err(&client->dev, "no platform data provided\n");
 		return -EINVAL;
 	}
-
-	maxim_chip = chip;
 
 	i2c_set_clientdata(client, chip);
 
@@ -1377,7 +1309,7 @@ static int max17055_probe(struct i2c_client *client,
 	regmap_read(chip->regmap, MAX17055_UserMem1, &driver_version);
 	if (val & STATUS_POR_BIT)
 		schedule_work(&chip->work);
-	else if (driver_version != chip->version)
+	else if (driver_version != MAX17055_DRIVER_VERSION)
 		schedule_work(&chip->work);
 	else
 		chip->init_complete = 1;

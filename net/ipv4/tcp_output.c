@@ -78,7 +78,7 @@ static bool tcp_write_xmit(struct sock *sk, unsigned int mss_now, int nonagle,
 
 /*ZTE_LC_TCP_DEBUG, 20130116 start*/
 int tcp_socket_debugfs = 0; /*1 TCP, 2 IP, 3 TCP&IP*/
-int ip_log_pm = 0;    /*ZTE_PM_TCP  lcf@20160523*/
+int ip_log_pm = 1;    /*ZTE_PM_TCP  lcf@20160523*/
 /*ZTE_LC_TCP_DEBUG, 20130116 end*/
 /* Account for new data that has been sent to the network. */
 static void tcp_event_new_data_sent(struct sock *sk, const struct sk_buff *skb)
@@ -91,14 +91,13 @@ static void tcp_event_new_data_sent(struct sock *sk, const struct sk_buff *skb)
 	if (tcp_socket_debugfs & 0x00000001) {
 		struct inet_sock *inet = inet_sk(sk);
 		char stmp[50], dtmp[50];
-		bool is_ipv6hdr = false;
+
 #if IS_ENABLED(CONFIG_IPV6)
 		if ((sk->sk_family == AF_INET6) &&
 			(ipv6_addr_type(&((struct ipv6_pinfo *)(inet6_sk(sk)))->saddr) == IPV6_ADDR_MAPPED)) {
-			is_ipv6hdr = true;
-		}
+#else
+		if (sk->sk_family == AF_INET) {
 #endif
-		if (is_ipv6hdr || AF_INET == sk->sk_family) {
 			if (strcmp(inet_ntop(AF_INET, &inet->inet_saddr, stmp, 50), "127.0.0.1"))
 				pr_info("[TCP] Tx D_len = %d ,Gpid:%d (%s)  (%s:%d -> %s:%d)\n",
 					skb->len, current->group_leader->pid, current->group_leader->comm,
@@ -349,17 +348,16 @@ static inline void TCP_ECN_send_syn(struct sock *sk, struct sk_buff *skb)
 	if (tcp_socket_debugfs & 0x00000001) {
 		struct inet_sock *inet = inet_sk(sk);
 		char stmp[50], dtmp[50];
-		bool is_ipv6hdr = false;
 
 #if IS_ENABLED(CONFIG_IPV6)
 		if ((sk->sk_family == AF_INET6) &&
-			(ipv6_addr_type(&((struct ipv6_pinfo *)(inet6_sk(sk)))->saddr) == IPV6_ADDR_MAPPED)) {
-			is_ipv6hdr = true;
-		}
+			((ipv6_addr_type(&((struct ipv6_pinfo *)(inet6_sk(sk)))->saddr) == IPV6_ADDR_MAPPED) ||
+				(ipv6_addr_type(&((struct ipv6_pinfo *)(inet6_sk(sk)))->saddr) == IPV6_ADDR_ANY))) {
+#else
+		if (sk->sk_family == AF_INET) {
 #endif
-		if (is_ipv6hdr || AF_INET == sk->sk_family) {
 			if (strcmp(inet_ntop(AF_INET, &inet->inet_saddr, stmp, 50), "127.0.0.1"))
-				pr_info("[TCP]  CONN REQ Gpid:%d (%s)  (%s:%d -> %s:%d)\n",
+				pr_info("[TCP]  CONN REQ	Gpid:%d (%s)  (%s:%d -> %s:%d)\n",
 					current->group_leader->pid, current->group_leader->comm,
 					inet_ntop(AF_INET, &inet->inet_saddr, stmp, 50),
 					ntohs(inet->inet_sport),
@@ -2649,15 +2647,13 @@ void tcp_send_fin(struct sock *sk)
 	if (tcp_socket_debugfs & 0x00000001) {
 		struct inet_sock *inet = inet_sk(sk);
 		char stmp[50], dtmp[50];
-		bool is_ipv6hdr = false;
 
 #if IS_ENABLED(CONFIG_IPV6)
 		if ((sk->sk_family == AF_INET6) &&
 			(ipv6_addr_type(&((struct ipv6_pinfo *)(inet6_sk(sk)))->saddr) == IPV6_ADDR_MAPPED)) {
-			is_ipv6hdr = true;
-		}
+#else
+		if (sk->sk_family == AF_INET) {
 #endif
-		if (is_ipv6hdr || AF_INET == sk->sk_family) {
 			if (strcmp(inet_ntop(AF_INET, &inet->inet_saddr, stmp, 50), "127.0.0.1"))
 				pr_info("[TCP]  DISCONN  Gpid:%d (%s)  (%s:%d -> %s:%d)\n",
 					current->group_leader->pid, current->group_leader->comm,
@@ -3346,10 +3342,9 @@ static int lcd_fb_callback(struct notifier_block *nfb, unsigned long event, void
 	struct fb_event *evdata = data;
 	int *blank;
 
-	if (!(tcp_socket_debugfs & 0x00000004)) {
-		ip_log_pm = 0;
+	if (!(tcp_socket_debugfs & 0x00000004))
 		return 0;
-	}
+
 	pr_info("ZTE_PM %s enter , event=%lu\n", __func__, event);
 	if (evdata && evdata->data && event == FB_EVENT_BLANK) {
 		blank = evdata->data;

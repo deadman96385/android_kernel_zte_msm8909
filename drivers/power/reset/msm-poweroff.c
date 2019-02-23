@@ -354,12 +354,6 @@ static void msm_restart_prepare(const char *cmd)
 			qpnp_pon_set_restart_reason(
 				PON_RESTART_REASON_FTMMODE);
 			__raw_writel(0x776655ee, restart_reason);
-#if defined(CONFIG_ZTE_PIL_AUTH_ERROR_DETECTION) || defined(VZW)
-		} else if (!strncmp(cmd, "unauth", 6)) {
-			qpnp_pon_set_restart_reason(
-				PON_RESTART_REASON_PIL_UNAUTH);
-			__raw_writel(0x776655cc, restart_reason);
-#endif
 		} else if (!strncmp(cmd, "oem-", 4)) {
 			unsigned long code;
 			int ret;

@@ -77,6 +77,5 @@ obj-y += zte_misc.o
 obj-$(CONFIG_ZTE_HALL_AVAILABLE) += zte-hall.o
 obj-$(CONFIG_LC709203F_FG)     += zte_lc709203f_fg.o
 obj-$(CONFIG_TI24x9x_CHARGER)	 += zte_ti24x9x.o
-obj-$(CONFIG_TI25601_CHARGER)    += zte_ti_charger.o
 obj-$(CONFIG_TI27520_BMS)	+= ztebms/
 obj-y				+= zte-spmi-lite.o

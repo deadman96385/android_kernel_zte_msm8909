@@ -630,12 +630,8 @@ err_dec_register:
 err_v4l2_register:
 	sysfs_remove_group(&pdev->dev.kobj, &msm_vidc_core_attr_group);
 err_core_init:
-
-/*
- * Fixed CWE-404, Resource leak(RESOURCE_LEAK), checked by Coverity
- */
-err_no_mem:
 	kfree(core);
+err_no_mem:
 	return rc;
 }
 

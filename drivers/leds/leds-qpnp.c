@@ -1013,19 +1013,6 @@ static int qpnp_mpp_set(struct qpnp_led_data *led)
 			}
 		}
 
-#if defined(CONFIG_BOARD_SAPPHIRE)
-		if (green_led) {
-			if (led_all_open()) {
-				rc = qpnp_led_masked_write(green_led,
-					LED_MPP_SINK_CTRL(green_led->base),
-					LED_MPP_SINK_MASK, 4);		/*25mA*/
-			} else {
-				rc = qpnp_led_masked_write(green_led,
-					LED_MPP_SINK_CTRL(green_led->base),
-					LED_MPP_SINK_MASK, 3);		/*20mA*/
-			}
-		}
-#else
 		/*zte pm add  change to 10mA for orange color looks good.*/
 		if (green_led) {
 			if (led_all_open()) {
@@ -1039,7 +1026,7 @@ static int qpnp_mpp_set(struct qpnp_led_data *led)
 			}
 		}
 		/*zte jiangfeng add, end*/
-#endif
+
 		val = (led->mpp_cfg->source_sel & LED_MPP_SRC_MASK) |
 			(led->mpp_cfg->mode_ctrl & LED_MPP_MODE_CTRL_MASK);
 

@@ -69,7 +69,6 @@ dtb-$(CONFIG_ARCH_MSM8909) += msm8909-sim.dtb \
 	msm8909-pm8909-zte-kelly.dtb \
 	msm8909-pm8909-zte-grayjoylite.dtb \
 	msm8909-pm8909-zte-lewis.dtb \
-	msm8909-pm8909-zte-calbee.dtb \
 	msm8208-cdp.dtb \
 	msm8208-mtp.dtb \
 	msm8208-1gb-cdp.dtb \

@@ -1131,13 +1131,7 @@ static struct platform_driver mdss_fb_driver = {
 static void mdss_fb_scale_bl(struct msm_fb_data_type *mfd, u32 *bl_lvl)
 {
 	u32 temp = *bl_lvl;
-#ifdef ZTE_DISABLE_CABL_ON_MAX_BRIGHTNESS
-	/*if the brighness equal to max brighntess 255,just return.
-	   we don't need cabl in this sitution*/
-	if (temp == 255) {
-		return;
-	}
-#endif
+
 	pr_debug("input = %d, scale = %d\n", temp, mfd->bl_scale);
 	if (temp >= mfd->bl_min_lvl) {
 		if (temp > mfd->panel_info->bl_max) {

@@ -515,13 +515,6 @@ config BOARD_LEWIS
 	bool "ZTE LEWIS"
 	help
 	  Support for ZTE MSM8909 LEWIS device.
-
-config BOARD_CALBEE
-	depends on ARCH_MSM8909
-	select ZTE_BOARD_ID
-	bool "ZTE CALBEE"
-	help
-	  Support for ZTE MSM8909 CALBEE device.
 endmenu
 
 config MSM_STACKED_MEMORY
@@ -1158,11 +1151,4 @@ config FSM9900_GSM_NL
 	  The serial port connection can be established to communicate with the
 	  GSM NL module.
 
-config ZTE_PIL_AUTH_ERROR_DETECTION
-    depends on ARCH_MSM8909
-    bool "PIL AUTH ERROR DETECTION"
-    default n
-    help
-      When authorization of PIL images is failed, the system
-      will enter into UNAUTH mode to show related error message.
 endif

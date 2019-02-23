@@ -983,6 +983,7 @@ static int mdss_dsi_read_status_second(struct mdss_dsi_ctrl_pdata *ctrl)
 	struct mdss_panel_info *pinfo = &ctrl->panel_data.panel_info;
 
 	if(!pinfo->esd_check_enabled_second) {
+		pr_err("%s: esd_check_enabled_second disable\n", __func__);
 		return 1;
 	}
 

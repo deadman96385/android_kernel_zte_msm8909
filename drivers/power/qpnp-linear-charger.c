@@ -162,7 +162,6 @@ enum {
 	SOC	= BIT(3),
 	PARALLEL = BIT(4),
 	COLLAPSE = BIT(5),
-	TEMP = BIT(6),
 };
 
 enum bpd_type {
@@ -217,14 +216,6 @@ static enum power_supply_property msm_batt_power_props[] = {
 	POWER_SUPPLY_PROP_COOL_TEMP,
 	POWER_SUPPLY_PROP_WARM_TEMP,
 	POWER_SUPPLY_PROP_SYSTEM_TEMP_LEVEL,
-};
-
-enum {
-	TEMP_COLD_STATE,
-	TEMP_COOL_STATE,
-	TEMP_NORMAL_STATE,
-	TEMP_WARM_STATE,
-	TEMP_HOT_STATE,
 };
 
 static char *pm_batt_supplied_to[] = {
@@ -341,8 +332,6 @@ struct qpnp_lbc_chip {
 	u16				misc_base;
 	bool				bat_is_cool;
 	bool				bat_is_warm;
-	bool				bat_is_hot;
-	bool				bat_is_cold;
 	bool				chg_done;
 	bool				usb_present;
 	bool				batt_present;
@@ -376,9 +365,6 @@ struct qpnp_lbc_chip {
 	int				cfg_bpd_detection;
 	int				cfg_warm_bat_decidegc;
 	int				cfg_cool_bat_decidegc;
-	int				cfg_cold_bat_decidegc;
-	int				cfg_hot_bat_decidegc;
-	int				tm_state;
 	int				fake_battery_soc;
 	int				cfg_soc_resume_limit;
 	int				cfg_float_charge;
@@ -960,9 +946,9 @@ static int qpnp_lbc_set_appropriate_vddmax(struct qpnp_lbc_chip *chip)
 {
 	int rc;
 
-	if (chip->bat_is_cool || chip->bat_is_cold)
+	if (chip->bat_is_cool)
 		rc = qpnp_lbc_vddmax_set(chip, chip->cfg_cool_bat_mv);
-	else if (chip->bat_is_warm || chip->bat_is_hot)
+	else if (chip->bat_is_warm)
 		rc = qpnp_lbc_vddmax_set(chip, chip->cfg_warm_bat_mv);
 	else
 		rc = qpnp_lbc_vddmax_set(chip, chip->cfg_max_voltage_mv);
@@ -1715,7 +1701,6 @@ static int qpnp_batt_power_set_property(struct power_supply *psy,
 			} else {
 				chip->chg_done = true;
 				chip->chg_failed_count = 0;
-				pr_err("clear chg_failed_count when the state is FULL.");
 			}
 
 			/*
@@ -1993,130 +1978,6 @@ static int qpnp_lbc_parallel_get_property(struct power_supply *psy,
 }
 
 
-#if defined(CONFIG_BOARD_KELLY)
-
-static void update_temp_state(struct qpnp_lbc_chip *chip)
-{
-	chip->bat_is_hot = (chip->tm_state == TEMP_HOT_STATE) ? true : false;
-	chip->bat_is_warm = (chip->tm_state == TEMP_WARM_STATE) ? true : false;
-	chip->bat_is_cool = (chip->tm_state == TEMP_COOL_STATE) ? true : false;
-	chip->bat_is_cold = (chip->tm_state == TEMP_COLD_STATE) ? true : false;
-}
-
-static void  temp_state_changed(struct qpnp_lbc_chip *chip)
-{
-	update_temp_state(chip);
-
-	switch (chip->tm_state) {
-	case(TEMP_COLD_STATE):
-		chip->adc_param.high_temp = chip->cfg_cold_bat_decidegc + HYSTERISIS_DECIDEGC;
-		chip->adc_param.state_request = ADC_TM_WARM_THR_ENABLE;
-		pr_info("chip->adc_param.low_temp1=%d\n",
-			chip->adc_param.low_temp);
-		qpnp_lbc_charger_enable(chip, TEMP, 0);
-		power_supply_changed(&chip->batt_psy);
-		break;
-	case(TEMP_COOL_STATE):
-		chip->adc_param.high_temp = chip->cfg_cool_bat_decidegc + HYSTERISIS_DECIDEGC;
-		chip->adc_param.low_temp =	chip->cfg_cold_bat_decidegc;
-		chip->adc_param.state_request = ADC_TM_HIGH_LOW_THR_ENABLE;
-		pr_info("chip->adc_param.low_temp5=%d,chip->adc_param.high_temp=%d\n",
-				chip->adc_param.low_temp, chip->adc_param.high_temp);
-		qpnp_lbc_charger_enable(chip, TEMP, 1);
-		power_supply_changed(&chip->batt_psy);
-		break;
-	case(TEMP_NORMAL_STATE):
-		chip->adc_param.low_temp = chip->cfg_cool_bat_decidegc;
-		chip->adc_param.high_temp = chip->cfg_warm_bat_decidegc;
-		chip->adc_param.state_request = ADC_TM_HIGH_LOW_THR_ENABLE;
-		pr_info("chip->adc_param.low_temp3=%d,chip->adc_param.high_temp=%d\n",
-			chip->adc_param.low_temp, chip->adc_param.high_temp);
-		qpnp_lbc_charger_enable(chip, TEMP, 1);
-		power_supply_changed(&chip->batt_psy);
-		break;
-	case(TEMP_WARM_STATE):
-		chip->adc_param.low_temp = chip->cfg_warm_bat_decidegc - HYSTERISIS_DECIDEGC;
-		chip->adc_param.high_temp = chip->cfg_hot_bat_decidegc;
-		chip->adc_param.state_request = ADC_TM_HIGH_LOW_THR_ENABLE;
-		pr_info("chip->adc_param.low_temp2=%d,chip->adc_param.high_temp=%d\n",
-			chip->adc_param.low_temp, chip->adc_param.high_temp);
-		qpnp_lbc_charger_enable(chip, TEMP, 1);
-		power_supply_changed(&chip->batt_psy);
-		break;
-	case(TEMP_HOT_STATE):
-		chip->adc_param.low_temp =	chip->cfg_hot_bat_decidegc	- HYSTERISIS_DECIDEGC;
-		chip->adc_param.state_request = ADC_TM_COOL_THR_ENABLE;
-		pr_info("chip->adc_param.low_temp4=%d\n", chip->adc_param.low_temp);
-		qpnp_lbc_charger_enable(chip, TEMP, 0);
-		power_supply_changed(&chip->batt_psy);
-		break;
-	default:
-		break;
-	}
-}
-
-static void qpnp_lbc_jeita_adc_notification(enum qpnp_tm_state state, void *ctx)
-{
-	struct qpnp_lbc_chip *chip = ctx;
-	int temp;
-	unsigned long flags;
-
-	if (state >= ADC_TM_STATE_NUM) {
-		pr_err("invalid notification %d\n", state);
-		return;
-	}
-
-	temp = get_prop_batt_temp(chip);
-	pr_info("temp = %d state = %s tm_state = %d\n", temp,
-			state == ADC_TM_WARM_STATE ? "warm" : "cool", chip->tm_state);
-
-	if (state == ADC_TM_WARM_STATE) {
-		switch (chip->tm_state) {
-		case(TEMP_COLD_STATE):
-			chip->tm_state = TEMP_COOL_STATE;
-			break;
-		case(TEMP_COOL_STATE):
-			chip->tm_state = TEMP_NORMAL_STATE;
-			break;
-		case(TEMP_NORMAL_STATE):
-			chip->tm_state = TEMP_WARM_STATE;
-			break;
-		case(TEMP_WARM_STATE):
-			chip->tm_state = TEMP_HOT_STATE;
-			break;
-		}
-		temp_state_changed(chip);
-	} else {
-		switch (chip->tm_state) {
-		case(TEMP_COOL_STATE):
-			chip->tm_state = TEMP_COLD_STATE;
-			break;
-		case(TEMP_NORMAL_STATE):
-			chip->tm_state = TEMP_COOL_STATE;
-			break;
-		case(TEMP_WARM_STATE):
-			chip->tm_state = TEMP_NORMAL_STATE;
-			break;
-		case(TEMP_HOT_STATE):
-			chip->tm_state = TEMP_WARM_STATE;
-			break;
-		}
-		temp_state_changed(chip);
-	}
-	spin_lock_irqsave(&chip->ibat_change_lock, flags);
-	qpnp_lbc_set_appropriate_vddmax(chip);
-	qpnp_lbc_set_appropriate_current(chip);
-	spin_unlock_irqrestore(&chip->ibat_change_lock, flags);
-
-	pr_info("cold %d, cool %d, warm %d, hot %d, low = %d deciDegC, high = %d deciDegC\n",
-			chip->bat_is_cold, chip->bat_is_cool, chip->bat_is_warm, chip->bat_is_hot,
-			chip->adc_param.low_temp, chip->adc_param.high_temp);
-
-	if (qpnp_adc_tm_channel_measure(chip->adc_tm_dev, &chip->adc_param))
-		pr_err("request ADC error\n");
-}
-
-#else
 static void qpnp_lbc_jeita_adc_notification(enum qpnp_tm_state state, void *ctx)
 {
 	struct qpnp_lbc_chip *chip = ctx;
@@ -2198,7 +2059,6 @@ static void qpnp_lbc_jeita_adc_notification(enum qpnp_tm_state state, void *ctx)
 	if (qpnp_adc_tm_channel_measure(chip->adc_tm_dev, &chip->adc_param))
 		pr_err("request ADC error\n");
 }
-#endif
 
 #define IBAT_TERM_EN_MASK		BIT(3)
 static int qpnp_lbc_chg_init(struct qpnp_lbc_chip *chip)
@@ -2437,8 +2297,6 @@ static int show_lbc_config(struct seq_file *m, void *data)
 			"cfg_bpd_detection\t=\t%d\n"
 			"cfg_warm_bat_decidegc\t=\t%d\n"
 			"cfg_cool_bat_decidegc\t=\t%d\n"
-			"cfg_cold_bat_decidegc\t=\t%d\n"
-			"cfg_hot_bat_decidegc\t=\t%d\n"
 			"cfg_soc_resume_limit\t=\t%d\n"
 			"cfg_float_charge\t=\t%d\n",
 			chip->cfg_charging_disabled,
@@ -2465,8 +2323,6 @@ static int show_lbc_config(struct seq_file *m, void *data)
 			chip->cfg_bpd_detection,
 			chip->cfg_warm_bat_decidegc,
 			chip->cfg_cool_bat_decidegc,
-			chip->cfg_cold_bat_decidegc,
-			chip->cfg_hot_bat_decidegc,
 			chip->cfg_soc_resume_limit,
 			chip->cfg_float_charge);
 
@@ -2519,8 +2375,6 @@ static int qpnp_charger_read_dt_props(struct qpnp_lbc_chip *chip)
 	OF_PROP_READ(chip, cfg_tchg_mins, "tchg-mins", rc, 1);
 	OF_PROP_READ(chip, cfg_warm_bat_decidegc, "warm-bat-decidegc", rc, 1);
 	OF_PROP_READ(chip, cfg_cool_bat_decidegc, "cool-bat-decidegc", rc, 1);
-	OF_PROP_READ(chip, cfg_cold_bat_decidegc, "cold-bat-decidegc", rc, 1);
-	OF_PROP_READ(chip, cfg_hot_bat_decidegc, "hot-bat-decidegc", rc, 1);
 	OF_PROP_READ(chip, cfg_hot_batt_p, "batt-hot-percentage", rc, 1);
 	OF_PROP_READ(chip, cfg_cold_batt_p, "batt-cold-percentage", rc, 1);
 	OF_PROP_READ(chip, cfg_batt_weak_voltage_uv, "vbatweak-uv", rc, 1);
@@ -2648,9 +2502,6 @@ static int qpnp_charger_read_dt_props(struct qpnp_lbc_chip *chip)
 			chip->cfg_cool_bat_decidegc,
 			chip->cfg_hot_batt_p,
 			chip->cfg_cold_batt_p);
-	pr_debug("cold-bat-decidegc=%d, hot-bat-decidegc=%d\n",
-			chip->cfg_cold_bat_decidegc,
-			chip->cfg_hot_bat_decidegc);
 	pr_debug("tchg-mins=%d, vbatweak-uv=%d, resume-soc=%d\n",
 			chip->cfg_tchg_mins,
 			chip->cfg_batt_weak_voltage_uv,
@@ -2729,7 +2580,6 @@ static irqreturn_t qpnp_lbc_usbin_valid_irq_handler(int irq, void *_chip)
 		chip->usb_present = usb_present;
 		if (!usb_present) {
 			chip->chg_failed_count = 0;
-			pr_err("clear the chg_failed_count when remove usb-charger.");
 			qpnp_lbc_charger_enable(chip, CURRENT, 0);
 			qpnp_lbc_charger_enable(chip, USER, 1);
 			spin_lock_irqsave(&chip->ibat_change_lock, flags);
@@ -3119,11 +2969,6 @@ static void update_heartbeat(struct work_struct *work)
 	health	  = get_prop_batt_health(chip);
 	usb_pres  = chip->usb_present;
 
-	if (cap == 100) {
-		chip->chg_failed_count = 0;
-		qpnp_lbc_charger_enable(chip, USER, 1);
-	}
-
 	/*if heatbeat_ms is bigger than 500ms, it means users need this information, must output the logs directly.*/
 	if ((heartbeat_ms >= 500) || (abs(temp-old_temp) >= 1)
 		|| (old_cap != cap) || (old_stat != stat)
@@ -3301,11 +3146,6 @@ static void determine_initial_status(struct qpnp_lbc_chip *chip)
 		}
 		power_supply_set_online(chip->usb_psy, 1);
 	}
-	chip->bat_is_cold = false;
-	chip->bat_is_hot = false;
-	chip->bat_is_cool = false;
-	chip->bat_is_warm = false;
-	chip->tm_state = TEMP_NORMAL_STATE;
 }
 
 static void qpnp_lbc_collapsible_detection_work(struct work_struct *work)

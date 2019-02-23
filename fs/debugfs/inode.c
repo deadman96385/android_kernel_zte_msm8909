@@ -649,6 +649,7 @@ bool debugfs_initialized(void)
 }
 EXPORT_SYMBOL_GPL(debugfs_initialized);
 
+#if !defined(ZTE_FEATURE_TF_SECURITY_SYSTEM)
 static struct kobject *debug_kobj;
 
 static int __init debugfs_init(void)
@@ -666,5 +667,11 @@ static int __init debugfs_init(void)
 
 	return retval;
 }
+#else
+static int __init debugfs_init(void)
+{
+	return 0;
+}
+#endif
 core_initcall(debugfs_init);
 

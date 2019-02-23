@@ -46,8 +46,6 @@ static const struct of_device_id zte_misc_of_match[] = {
 };
 MODULE_DEVICE_TABLE(of, zte_misc_of_match);
 
-#define CHARGER_BUF_SIZE 0x32
-
 int get_sysnumber_byname(char *name)
 {
 	int i;
@@ -363,47 +361,6 @@ void zte_misc_chg_enable(void)
 	gpio_chg_en_num = get_sysnumber_byname(GPIO_CHG_EN_NAME);
 	pr_info("The gpio_chg_en_num is %d\n", gpio_chg_en_num);
 	gpio_direction_output(gpio_chg_en_num, 1);
-}
-#endif
-
-extern int get_design_capacity(void);
-
-static int design_capacity = -1;
-
-static int zte_misc_get_design_capacity(char *val, struct kernel_param *kp)
-{
-	int zte_design_capacity = 0;
-
-	zte_design_capacity = get_design_capacity();
-	return snprintf(val, CHARGER_BUF_SIZE, "%d", zte_design_capacity);
-}
-module_param_call(design_capacity, NULL, zte_misc_get_design_capacity,
-			&design_capacity, 0644);
-
-#if defined(CONFIG_BOARD_SWEET)
-extern int schedule_update_heartbeat_work(void);
-static int store_mode = 0;
-static int set_store_mode(const char *val, struct kernel_param *kp)
-{
-	int ret;
-
-	ret = param_set_int(val, kp);
-	if (ret) {
-		pr_err("Fail to setting value %d\n", ret);
-		return ret;
-	}
-
-	schedule_update_heartbeat_work();
-
-	pr_debug("The store_mode is %d\n", store_mode);
-	return 0;
-}
-module_param_call(store_mode, set_store_mode, param_get_int, &store_mode, 0644);
-
-int get_store_mode(void)
-{
-	pr_debug("Get_store_mode the store_mode is %d\n", store_mode);
-	return store_mode;
 }
 #endif
 

@@ -1,32 +1,31 @@
 #
-# Makefile for the <t-base core driver
-#
+# this makefile is called from the kernel make system. Thus we basically
+# add things to "obj-m" here.
 
-GUD_ROOT_FOLDER := drivers/gud/
+ifeq ($(MODE),release)
+    ccflags-y = -O2 -DNDEBUG
+else
+    ccflags-y = -DDEBUG
+endif # DEBUG/RELEASE
 
-# add our modules to kernel.
-obj-$(CONFIG_TRUSTONIC_TEE) += mcDrvModule.o
+# CFLAG for testable mode
+ifeq ($(IS_TESTABLE),yes)
+	ccflags-y = -DTEST
+endif
 
-mcDrvModule-y := \
-	admin.o \
-	client.o \
-	clientlib.o \
-	clock.o \
-	fastcall.o \
-	logging.o \
-	main.o \
-	mcp.o \
-	mmu.o \
-	pm.o \
-	scheduler.o \
-	session.o \
-	user.o
+# CFLAGS from the build script
+ifdef MOBICORE_CFLAGS
+	ccflags-y += $(MOBICORE_CFLAGS)
+endif
+#EXTRA_CFLAGS+=-DDEBUG_VERBOSE
 
-# Release mode by default
-ccflags-y += -DNDEBUG
-ccflags-y += -Wno-declaration-after-statement
+ccflags-y += -Wall -D__$(PLATFORM)__
+# add our module to kernel.
+obj-m += mcDrvModule.o
 
-ccflags-$(CONFIG_TRUSTONIC_TEE_DEBUG) += -DDEBUG
+mcDrvModule-objs :=logging.o ops.o mem.o api.o pm.o main.o
 
-# MobiCore Driver includes
-ccflags-y += -I$(GUD_ROOT_FOLDER)/MobiCoreDriver
+clean:
+	rm -rf *.o *~ core .depend .*.cmd *.ko *.mod.c .tmp_versions \
+		Module.markers Module.symvers modules.order
+

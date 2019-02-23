@@ -664,22 +664,20 @@ static int fts_gpio_configure(struct fts_ts_data *data, bool on)
 		return 0;
 	}
 
-	if (gpio_is_valid(data->pdata->irq_gpio))  {
-		err = gpio_direction_output(data->pdata->irq_gpio, 0);
+	if (gpio_is_valid(data->pdata->irq_gpio))
+		gpio_free(data->pdata->irq_gpio);
+	if (gpio_is_valid(data->pdata->reset_gpio)) {
+		/*
+		 * This is intended to save leakage current
+		 * only. Even if the call(gpio_direction_input)
+		 * fails, only leakage current will be more but
+		 * functionality will not be affected.
+		 */
+		err = gpio_direction_input(data->pdata->reset_gpio);
 		if (err) {
 			dev_err(&data->client->dev,
 				"unable to set direction for gpio "
 				"[%d]\n", data->pdata->irq_gpio);
-		}
-		gpio_free(data->pdata->irq_gpio);
-	}
-
-	if (gpio_is_valid(data->pdata->reset_gpio)) {
-		err = gpio_direction_output(data->pdata->reset_gpio, 0);
-		if (err) {
-			dev_err(&data->client->dev,
-				"unable to set direction for gpio "
-				"[%d]\n", data->pdata->reset_gpio);
 		}
 		gpio_free(data->pdata->reset_gpio);
 	}
@@ -890,11 +888,9 @@ err_pinctrl_get:
 static int fts_ts_start(struct device *dev)
 {
 	struct fts_ts_data *data = dev_get_drvdata(dev);
-#ifdef FTS_POWER_CTRL_SLEEP
 	int err;
-#endif
 
-#ifdef FTS_POWER_CTRL_SLEEP
+	pr_info("pzh:Enter fts_ts_start\n");
 	if (data->pdata->power_on) {
 		err = data->pdata->power_on(true);
 		if (err) {
@@ -929,20 +925,14 @@ static int fts_ts_start(struct device *dev)
 		pr_info("pzh:failed to put gpios in resue state\n");
 		goto err_gpio_configuration;
 	}
-#else
-	gpio_direction_output(data->pdata->reset_gpio, 0);
-	msleep(data->pdata->hard_rst_dly);
-	gpio_direction_output(data->pdata->reset_gpio, 1);
+
 	msleep(data->pdata->soft_rst_dly);
-	pr_info("fts exit sleep mode!!!\n");
-#endif
 
 	enable_irq(data->client->irq);
 	data->suspended = false;
 
 	return 0;
 
-#ifdef FTS_POWER_CTRL_SLEEP
 err_gpio_configuration:
 	if (data->ts_pinctrl) {
 		err = pinctrl_select_state(data->ts_pinctrl,
@@ -968,7 +958,6 @@ err_gpio_configuration:
 	}
 	enable_irq(data->client->irq);
 	return err;
-#endif
 }
 
 /*******************************************************************************
@@ -994,7 +983,12 @@ static int fts_ts_stop(struct device *dev)
 	input_mt_report_pointer_emulation(data->input_dev, false);
 	input_sync(data->input_dev);
 
-#ifdef FTS_POWER_CTRL_SLEEP
+	if (gpio_is_valid(data->pdata->reset_gpio)) {
+		txbuf[0] = FTS_REG_PMODE;
+		txbuf[1] = FTS_PMODE_HIBERNATE;
+		fts_i2c_write(data->client, txbuf, sizeof(txbuf));
+	}
+
 	if (data->pdata->power_on) {
 		err = data->pdata->power_on(false);
 		if (err) {
@@ -1022,17 +1016,11 @@ static int fts_ts_stop(struct device *dev)
 			"failed to put gpios in suspend state\n");
 		goto gpio_configure_fail;
 	}
-#else
-	txbuf[0] = FTS_REG_PMODE;
-	txbuf[1] = FTS_PMODE_HIBERNATE;
-	fts_i2c_write(data->client, txbuf, sizeof(txbuf));
-	pr_info("fts enter sleep mode!!!\n");
-#endif
+
 	data->suspended = true;
 
 	return 0;
 
-#ifdef FTS_POWER_CTRL_SLEEP
 gpio_configure_fail:
 	if (data->ts_pinctrl) {
 		err = pinctrl_select_state(data->ts_pinctrl,
@@ -1057,7 +1045,6 @@ pwr_off_fail:
 		gpio_set_value_cansleep(data->pdata->reset_gpio, 1);
 	}
 	enable_irq(data->client->irq);
-#endif
 	return err;
 }
 

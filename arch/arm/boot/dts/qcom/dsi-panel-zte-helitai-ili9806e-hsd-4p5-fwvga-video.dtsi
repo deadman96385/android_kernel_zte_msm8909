@@ -19,8 +19,8 @@
 		qcom,mdss-dsi-panel-framerate = <60>;
 		qcom,mdss-dsi-virtual-channel-id = <0>;
 		qcom,mdss-dsi-stream = <0>;
-		qcom,mdss-pan-physical-height-dimension = <99>;
-		qcom,mdss-pan-physical-width-dimension = <56>;
+		qcom,mdss-pan-physical-height-dimension = <110>;
+		qcom,mdss-pan-physical-width-dimension = <62>;
 		qcom,mdss-dsi-panel-width = <480>;
 		qcom,mdss-dsi-panel-height = <854>;
 		qcom,mdss-dsi-h-front-porch = <80>;
@@ -62,36 +62,36 @@
 //++++++++++++++++++ Gamma Setting ++++++++++++++++++//
 
 			39 01 00 00 00 00 02 A0 00
-			39 01 00 00 00 00 02 A1 02
-			39 01 00 00 00 00 02 A2 07
-			39 01 00 00 00 00 02 A3 0E
+			39 01 00 00 00 00 02 A1 05
+			39 01 00 00 00 00 02 A2 0c
+			39 01 00 00 00 00 02 A3 10
 			39 01 00 00 00 00 02 A4 09
-			39 01 00 00 00 00 02 A5 18
-			39 01 00 00 00 00 02 A6 0B
-			39 01 00 00 00 00 02 A7 09
-			39 01 00 00 00 00 02 A8 04
-			39 01 00 00 00 00 02 A9 0A
-			39 01 00 00 00 00 02 AA 03
-			39 01 00 00 00 00 02 AB 04
-			39 01 00 00 00 00 02 AC 0C
-			39 01 00 00 00 00 02 AD 3B
-			39 01 00 00 00 00 02 AE 36
+			39 01 00 00 00 00 02 A5 19
+			39 01 00 00 00 00 02 A6 09
+			39 01 00 00 00 00 02 A7 0a
+			39 01 00 00 00 00 02 A8 03
+			39 01 00 00 00 00 02 A9 07
+			39 01 00 00 00 00 02 AA 05
+			39 01 00 00 00 00 02 AB 02
+			39 01 00 00 00 00 02 AC 07
+			39 01 00 00 00 00 02 AD 39
+			39 01 00 00 00 00 02 AE 34
 			39 01 00 00 00 00 02 AF 00
 
 ///==============Nagitive
 			39 01 00 00 00 00 02 C0 00
-			39 01 00 00 00 00 02 C1 04
-			39 01 00 00 00 00 02 C2 0C
-			39 01 00 00 00 00 02 C3 0F
+			39 01 00 00 00 00 02 C1 05
+			39 01 00 00 00 00 02 C2 11
+			39 01 00 00 00 00 02 C3 0f
 			39 01 00 00 00 00 02 C4 09
-			39 01 00 00 00 00 02 C5 17
+			39 01 00 00 00 00 02 C5 14
 			39 01 00 00 00 00 02 C6 09
-			39 01 00 00 00 00 02 C7 07
-			39 01 00 00 00 00 02 C8 03
+			39 01 00 00 00 00 02 C7 08
+			39 01 00 00 00 00 02 C8 04
 			39 01 00 00 00 00 02 C9 08
 			39 01 00 00 00 00 02 CA 08
 			39 01 00 00 00 00 02 CB 04
-			39 01 00 00 00 00 02 CC 0C
+			39 01 00 00 00 00 02 CC 0d
 			39 01 00 00 00 00 02 CD 22
 			39 01 00 00 00 00 02 CE 1d
 			39 01 00 00 00 00 02 CF 00
@@ -188,9 +188,9 @@
 		qcom,suspend-ulps-enabled;
 		qcom,mdss-dsi-lane-0-state;
 		qcom,mdss-dsi-lane-1-state;
-		qcom,mdss-dsi-panel-timings =[78 1c 1E 00 42 44 18 20 17 03 04 00];
+		qcom,mdss-dsi-panel-timings =[6A 16 0E 00 38 3A 12 1E 10 03 04 00];
 		qcom,mdss-dsi-t-clk-post = <0x04>;
-		qcom,mdss-dsi-t-clk-pre = <0x1b>;
+		qcom,mdss-dsi-t-clk-pre = <0x17>;
 		qcom,mdss-dsi-bl-min-level = <1>;
 		qcom,mdss-dsi-bl-max-level = <255>;
 		qcom,mdss-dsi-dma-trigger = "trigger_sw";

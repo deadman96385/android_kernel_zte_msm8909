@@ -167,7 +167,7 @@ int ip6_output(struct sk_buff *skb)
 		kfree_skb(skb);
 		return 0;
 	}
-	xt_socket_get6_print(skb, 0);
+
 	return NF_HOOK_COND(NFPROTO_IPV6, NF_INET_POST_ROUTING, skb, NULL, dev,
 			    ip6_finish_output,
 			    !(IP6CB(skb)->flags & IP6SKB_REROUTED));

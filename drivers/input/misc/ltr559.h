@@ -183,7 +183,7 @@
 
 #define ACT_INTERRUPT 1
 /*#define DYNAMIC_PS_CALI*/
-#if 0 /*defined(CONFIG_BOARD_SWEET)*/
+#if defined(CONFIG_BOARD_SWEET)
 #define CALLING_DYNAMIC_CALI 1
 #else
 #define CALLING_DYNAMIC_CALI 0

@@ -37,7 +37,7 @@
 		qcom,vddmax-mv = <4350>;
 		qcom,vddsafe-mv = <4380>;
 		qcom,vinmin-mv = <4308>;
-		qcom,ibatsafe-ma = <1000>;
+		qcom,ibatsafe-ma = <900>;/*for p890a12/13 as ibat_max*/
 		qcom,thermal-mitigation = <1440 720 630 0>;
 		qcom,cool-bat-decidegc = <100>;
 		qcom,warm-bat-decidegc = <450>;
@@ -45,13 +45,12 @@
 		qcom,warm-bat-mv = <4100>;
 		qcom,ibatmax-warm-ma = <500>;
 		qcom,ibatmax-cool-ma = <500>;
-		qcom,batt-hot-percentage = <25>;  /*0-60 DegC*/
-		qcom,batt-cold-percentage = <80>; /*0-60 DegC*/
+		qcom,batt-hot-percentage = <35>;  /*0-45 DegC for for p890a12/13*/
+		qcom,batt-cold-percentage = <70>; /*0-45 DegC for for p890a12/13*/
 		qcom,tchg-mins = <232>;
 		qcom,chg-vadc = <&pm8916_vadc>;
 		qcom,chg-adc_tm = <&pm8916_adc_tm>;
 		qcom,bpd-detection = "bpd_thm";
-		qcom,disable-vbatdet-based-recharge;
 	};
 
 &pm8916_bms {
@@ -78,9 +77,7 @@
 		qcom,force-s3-on-suspend;
 		qcom,force-s2-in-charging;
 		qcom,report-charger-eoc;
-		qcom,resume-soc = <97>;
-		qcom,use-reported-soc;
-		qcom,use-poweroff-soc;
+		qcom,resume-soc = <96>;
 	};
 
 &soc {

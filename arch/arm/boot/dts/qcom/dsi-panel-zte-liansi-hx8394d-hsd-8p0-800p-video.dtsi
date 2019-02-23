@@ -55,22 +55,23 @@
 		qcom,mdss-dsi-mdp-trigger = "none";
 		qcom,ulps-enabled;
 		qcom,suspend-ulps-enabled;
+		zte,reset-suspend-low-enabled;
+		zte,vdd-vio-shutdown-enabled;
 		qcom,mdss-dsi-on-command = [
 				39 01 00 00 00 00 04 B9 FF 83 94
-				39 01 00 00 64 00 05 D9 00 8B 02 07
-				39 01 00 00 00 00 04 B9 FF 83 94
 				39 01 00 00 00 00 03 BA 73 83
-				39 01 00 00 00 00 10 B1 6c 10 10 24 e4 11 f1 80 e4 D7 23 80 C0 D2 58
+				39 01 00 00 00 00 10 B1 6c 15 15 24 e4 11 f1 80 e4 D7 23 80 C0 D2 58
 				39 01 00 00 00 00 0c B2 00 64 10 07 20 1C 08 08 1C 4D 00
 				39 01 00 00 00 00 0d B4 00 FF 03 5a 03 5a 03 5a 01 6a 01 6a
+				39 01 00 00 0a 00 03 B6 52 52
 				39 01 00 00 0a 00 1f D3 00 06 00 40 1a 08 00 32 10 07 00 07 54 15 0f 05 04 02
 				12 10 05 07 33 33 0b 0b 37 10 07 07
 				39 01 00 00 0a 00 2d D5 19 19 18 18 1a 1a 1b 1b 04 05 06 07 00 01 02 03 20 21
 				18 18 18 18 18 18 18 18 18 18 18 18 22 23 18 18 18 18 18 18 18 18 18 18 18 18
 				39 01 00 00 0a 00 2d D6 18 18 19 19 1a 1a 1b 1b 03 02 01 00 07 06 05 04 23 22
 				18 18 18 18 18 18 18 18 18 18 18 18 21 20 18 18 18 18 18 18 18 18 18 18 18 18
-				39 01 00 00 0a 00 2b E0 00 00 02 3C 3E 3f 12 3D 06 09 0A 19 0F 11 14 12 13 07
-				12 15 16 00 00 01 3C 3E 3f 12 3D 07 09 0B 12 0D 11 13 11 13 08 13 14 19
+				39 01 00 00 0a 00 2b E0 00 06 0C 31 34 3f 1d 41 06 0a 0c 17 0F 12 15 13 14 07
+				12 15 16 00 06 0b 30 34 3f 1d 40 07 0a 0D 18 0e 12 14 12 14 08 13 14 19
 				39 01 00 00 0a 00 02 cc 09
 				39 01 00 00 00 00 02 d2 55
 				39 01 00 00 00 00 03 c0 30 14
@@ -88,7 +89,7 @@
 		qcom,mdss-dsi-on-command-state = "dsi_lp_mode";
 		qcom,mdss-dsi-off-command-state = "dsi_hs_mode";
 		qcom,mdss-dsi-bl-pmic-control-type ="bl_ctrl_dcs";
-		qcom,mdss-dsi-reset-sequence = <1 20>, <0 20>, <1 50>;
+		qcom,mdss-dsi-reset-sequence = <1 20>, <0 20>, <1 20>;
 		qcom,mdss-dsi-lp11-init;
 		qcom,mdss-dsi-init-delay-us = <50000>;
 	};

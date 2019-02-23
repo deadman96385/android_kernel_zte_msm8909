@@ -3474,7 +3474,7 @@ static int msm8x16_wcd_codec_enable_micbias(struct snd_soc_dapm_widget *w,
 #if defined(CONFIG_BOARD_HELEN)
 			snd_soc_update_bits(codec, micb_int_reg, 0x40, 0x00);
 #else
-			snd_soc_update_bits(codec, micb_int_reg, 0x80, 0x00);
+			snd_soc_update_bits(codec, micb_int_reg, 0x80, 0x80);
 #endif
 		} else if (strnstr(w->name, internal2_text, strlen(w->name))) {
 			snd_soc_update_bits(codec, micb_int_reg, 0x10, 0x10);

@@ -2263,7 +2263,7 @@ static int kionix_accel_probe(struct i2c_client *client,
 	case KIONIX_ACCEL_WHO_AM_I_KXTJ2_1029:
 	case KIONIX_ACCEL_WHO_AM_I_KXCJK_1013:
 	case KIONIX_ACCEL_WHO_AM_I_KXTJ3_1035:
-		if ((err == KIONIX_ACCEL_WHO_AM_I_KXTJ2_1029) || (err == KIONIX_ACCEL_WHO_AM_I_KXTJ3_1035))
+		if (err == KIONIX_ACCEL_WHO_AM_I_KXTJ2_1029)
 			acceld->accel_group = KIONIX_ACCEL_GRP5;
 		else if (err == KIONIX_ACCEL_WHO_AM_I_KXCJK_1013)
 			acceld->accel_group = KIONIX_ACCEL_GRP6;

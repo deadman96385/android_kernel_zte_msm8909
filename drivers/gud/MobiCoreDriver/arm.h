@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013-2014 TRUSTONIC LIMITED
+ * Copyright (c) 2013 TRUSTONIC LIMITED
  * All Rights Reserved.
  *
  * This program is free software; you can redistribute it and/or
@@ -14,7 +14,7 @@
 #ifndef _MC_ARM_H_
 #define _MC_ARM_H_
 
-#include "main.h"
+#include "debug.h"
 
 #ifdef CONFIG_ARM64
 inline bool has_security_extensions(void)
@@ -41,12 +41,11 @@ inline bool is_secure_mode(void)
 inline bool has_security_extensions(void)
 {
 	u32 fea = 0;
-
 	asm volatile(
 		"mrc p15, 0, %[fea], cr0, cr1, 0" :
 		[fea]"=r" (fea));
 
-	mc_dev_devel("CPU Features: 0x%X\n", fea);
+	MCDRV_DBG_VERBOSE(mcd, "CPU Features: 0x%X", fea);
 
 	/*
 	 * If the CPU features ID has 0 for security features then the CPU
@@ -70,8 +69,8 @@ inline bool is_secure_mode(void)
 		[nsacr]"=r" (nsacr),
 		[cpsr]"=r"(cpsr));
 
-	mc_dev_devel("CPRS.M = set to 0x%X\n", cpsr & MODE_MASK);
-	mc_dev_devel("SCR.NS = set to 0x%X\n", nsacr);
+	MCDRV_DBG_VERBOSE(mcd, "CPRS.M = set to 0x%X\n", cpsr & MODE_MASK);
+	MCDRV_DBG_VERBOSE(mcd, "SCR.NS = set to 0x%X\n", nsacr);
 
 	/*
 	 * If the NSACR contains the reset value(=0) then most likely we are

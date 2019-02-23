@@ -122,8 +122,6 @@
 #define TIME_PER_PERCENT_UUC		60
 #define IAVG_SAMPLES			16
 #define MIN_SOC_UUC			3
-#define BATTERY_ID_VALUE		800000
-#define BATTERY_ID_KELLY_VALUE		635000
 
 #define QPNP_VM_BMS_DEV_NAME		"qcom,qpnp-vm-bms"
 
@@ -1476,8 +1474,6 @@ static void check_eoc_condition(struct qpnp_bms_chip *chip)
 {
 	int rc;
 	int status = get_battery_status(chip);
-	int ocv_now = estimate_ocv(chip);
-	static int full_count = 0;
 	union power_supply_propval ret = {0,};
 
 	if (status == POWER_SUPPLY_STATUS_UNKNOWN) {
@@ -1500,39 +1496,30 @@ static void check_eoc_condition(struct qpnp_bms_chip *chip)
 	 * if the SOC drops, reset ocv_at_100.
 	 */
 	if (chip->ocv_at_100 == -EINVAL) {
-#if defined(CONFIG_BOARD_ELDEN)
-		if ((chip->last_soc == 100) && (ocv_now > (chip->dt.cfg_max_voltage_uv - 20000))) {
-#else
-		if ((chip->last_soc == 100) && (ocv_now >= (chip->dt.cfg_max_voltage_uv))) {
-#endif
-			full_count = full_count + 1;
-			if (full_count >= 5) {
-				if (chip->dt.cfg_report_charger_eoc) {
-					rc = report_eoc(chip);
-					if (!rc) {
-						/*
-						 * update ocv_at_100 only if EOC is
-						 * reported successfully.
-						 */
-						chip->ocv_at_100 = chip->last_ocv_uv;
-						pr_debug("Battery FULL\n");
-					} else {
-						pr_err("Unable to report eoc rc=%d\n",
-								rc);
-						chip->ocv_at_100 = -EINVAL;
-					}
-				}
-				if (chip->dt.cfg_use_reported_soc) {
-					/* begin reported_soc process */
-					chip->reported_soc_in_use = true;
-					chip->charger_removed_since_full = false;
-					chip->charger_reinserted = false;
-					chip->reported_soc = 100;
-					pr_debug("Begin reported_soc process\n");
+		if (chip->last_soc == 100) {
+			if (chip->dt.cfg_report_charger_eoc) {
+				rc = report_eoc(chip);
+				if (!rc) {
+					/*
+					 * update ocv_at_100 only if EOC is
+					 * reported successfully.
+					 */
+					chip->ocv_at_100 = chip->last_ocv_uv;
+					pr_debug("Battery FULL\n");
+				} else {
+					pr_err("Unable to report eoc rc=%d\n",
+							rc);
+					chip->ocv_at_100 = -EINVAL;
 				}
 			}
-		} else {
-			full_count = 0;
+			if (chip->dt.cfg_use_reported_soc) {
+				/* begin reported_soc process */
+				chip->reported_soc_in_use = true;
+				chip->charger_removed_since_full = false;
+				chip->charger_reinserted = false;
+				chip->reported_soc = 100;
+				pr_debug("Begin reported_soc process\n");
+			}
 		}
 	} else {
 		if (chip->last_ocv_uv >= chip->ocv_at_100) {
@@ -1926,120 +1913,7 @@ static int zte_chg_capacity_filter(struct qpnp_bms_chip *chip, int percent_soc)
 	ztefilterP->last_soc = ztefilterP->soc;
 	return ztefilterP->soc;
 }
-
-#ifndef CONFIG_BOARD_ELDEN
-/* From the capacity enlarge, the capaciy have two jumps point, one is 33%, the trans_soc is 34%,
-there is no 33%, the function is process the battery jumps. another is 64%, the trans_soc is 65%,
-there is no 66% */
-#define THE_RAW_CAPACITY_33 33
-#define THE_RAW_CAPACITY_65 65
-#define THE_RAW_CAPACITY_FULL 100
-#define THE_ENLARGE_TO_FULL_DIV 97
-#define  THE_CAPACITY_DISPLAY_TIME_SEC 40
-static int zte_chg_capacity_trans(struct qpnp_bms_chip *chip, int raw_soc)
-{
-	static struct timespec ts = {0, 0};
-	static struct timespec ts_temp = {0, 0};
-	int soc_trans;
-	static int last_soc_trans = 0;
-
-	soc_trans = raw_soc * THE_RAW_CAPACITY_FULL/THE_ENLARGE_TO_FULL_DIV;
-	pr_info("raw_soc = %d, soc_trans = %d\n", raw_soc, soc_trans);
-
-	if (raw_soc <= 32 || (raw_soc > THE_RAW_CAPACITY_33 && raw_soc <= 64)
-		|| (raw_soc > THE_RAW_CAPACITY_65 && raw_soc <= THE_RAW_CAPACITY_FULL)) {
-		ts_temp.tv_sec = 0;
-		ts.tv_sec = 0;
-	} else {
-		if (is_battery_charging(chip)) {
-			if (raw_soc == THE_RAW_CAPACITY_33  && ts.tv_sec == 0) {
-				get_monotonic_boottime(&ts);
-				soc_trans = raw_soc;
-				pr_info("charging soc_trans = %d first***\n", soc_trans);
-			} else if (raw_soc == THE_RAW_CAPACITY_33 && ts.tv_sec > 0) {
-				get_monotonic_boottime(&ts_temp);
-				if (ts_temp.tv_sec - ts.tv_sec >= THE_CAPACITY_DISPLAY_TIME_SEC) {
-					soc_trans = raw_soc + 1;
-					pr_info("charging soc_trans  = %d end\n", soc_trans);
-				} else {
-					soc_trans = raw_soc;
-					pr_info("charging soc_trans  = %d continue\n", soc_trans);
-				}
-			} else if (raw_soc == THE_RAW_CAPACITY_65  && ts.tv_sec == 0) {
-				get_monotonic_boottime(&ts);
-				soc_trans = raw_soc + 1;
-				pr_info("charging soc_trans = %d first***\n", soc_trans);
-			} else if (raw_soc == THE_RAW_CAPACITY_65 && ts.tv_sec > 0) {
-				get_monotonic_boottime(&ts_temp);
-				if (ts_temp.tv_sec - ts.tv_sec >= THE_CAPACITY_DISPLAY_TIME_SEC) {
-					soc_trans = raw_soc + 2;
-					pr_info("charging soc_trans  = %d end\n", soc_trans);
-				} else {
-					soc_trans = raw_soc + 1;
-					pr_info("charging soc_trans  = %d continue\n", soc_trans);
-				}
-			} else {
-				ts_temp.tv_sec = 0;
-				ts.tv_sec = 0;
-			}
-			/* for example the discharging capacity is 34%, but chrging trans is 33%,
-			because the battery status is charging ,thus to report 34%,not report to 33% */
-			if (last_soc_trans > 0 && last_soc_trans > soc_trans) {
-				soc_trans = last_soc_trans;
-				pr_info("discharging to charging the capacity not decreasing soc_trans = %d\n",
-					soc_trans);
-			}
-		} else {
-			if (raw_soc == THE_RAW_CAPACITY_33 && ts.tv_sec == 0) {
-				get_monotonic_boottime(&ts);
-				soc_trans = raw_soc + 1;
-				pr_info("discharging soc_trans = %d first***\n", soc_trans);
-			} else if (raw_soc == THE_RAW_CAPACITY_33 && ts.tv_sec > 0) {
-				get_monotonic_boottime(&ts_temp);
-				if (ts_temp.tv_sec - ts.tv_sec >= THE_CAPACITY_DISPLAY_TIME_SEC) {
-					soc_trans = raw_soc;
-					pr_info("discharging soc_trans = %d end\n", soc_trans);
-				} else {
-					soc_trans = raw_soc + 1;
-					pr_info("discharging soc_trans = %d continue\n", soc_trans);
-				}
-			} else if (raw_soc == THE_RAW_CAPACITY_65 && ts.tv_sec == 0) {
-				get_monotonic_boottime(&ts);
-				soc_trans = raw_soc + 2;
-				pr_info("discharging soc_trans = %d first***\n", soc_trans);
-			} else if (raw_soc == THE_RAW_CAPACITY_65 && ts.tv_sec > 0) {
-				get_monotonic_boottime(&ts_temp);
-				if (ts_temp.tv_sec - ts.tv_sec >= THE_CAPACITY_DISPLAY_TIME_SEC) {
-					soc_trans = raw_soc + 1;
-					pr_info("discharging soc_trans = %d end\n", soc_trans);
-				} else {
-					soc_trans = raw_soc + 2;
-					pr_info("discharging soc_trans = %d continue\n", soc_trans);
-				}
-			} else {
-				ts_temp.tv_sec = 0;
-				ts.tv_sec = 0;
-			}
-			/* for example the charging capacity is 33%, but dischrging trans is 34%,
-			because the battery status is charging, thus to report 33%,not report to 34% */
-			if (last_soc_trans > 0 && last_soc_trans < soc_trans) {
-				soc_trans = last_soc_trans;
-				pr_info("charging to discharging the capacity not increasing soc_trans = %d\n",
-					soc_trans);
-			}
-		}
-	}
-
-	if (soc_trans == THE_RAW_CAPACITY_FULL)
-		soc_trans = 99;
-	else if (soc_trans > THE_RAW_CAPACITY_FULL)
-		soc_trans = THE_RAW_CAPACITY_FULL;
-	last_soc_trans = soc_trans;
-	return soc_trans;
-}
 #endif
-#endif
-
 static int report_state_of_charge(struct qpnp_bms_chip *chip)
 {
 	int soc, zte_soc;
@@ -2052,10 +1926,6 @@ static int report_state_of_charge(struct qpnp_bms_chip *chip)
 		soc = report_vm_bms_soc(chip);
 
 	#ifdef ZTE_CHG_BATTERY_CAPCITY_CORRECT
-#if defined(CONFIG_BOARD_ELDEN)
-#else
-	soc = zte_chg_capacity_trans(chip, soc);
-#endif
 	zte_soc = zte_chg_capacity_filter(chip, soc);
 	#endif
 	mutex_unlock(&chip->last_soc_mutex);
@@ -3778,27 +3648,8 @@ static int set_battery_data(struct qpnp_bms_chip *chip)
 		pr_err("cannot read battery id err = %lld\n", battery_id);
 		return battery_id;
 	}
-	pr_debug("the battery_id is %lld\n", battery_id);
-#if defined(CONFIG_BOARD_ELDEN)
-	if (battery_id < BATTERY_ID_VALUE) {
-		node = of_find_node_by_name(chip->spmi->dev.of_node,
-				"qcom,battery-data");
-	} else {
-		node = of_find_node_by_name(chip->spmi->dev.of_node,
-				"qcom,battery-data-byd");
-	}
-#elif defined(CONFIG_BOARD_KELLY) || defined(CONFIG_BOARD_GRAYJOYLITE) || defined(CONFIG_BOARD_LEWIS)
-	if (battery_id < BATTERY_ID_KELLY_VALUE) {
-		node = of_find_node_by_name(chip->spmi->dev.of_node,
-				"qcom,battery-data");
-	} else {
-		node = of_find_node_by_name(chip->spmi->dev.of_node,
-				"qcom,battery-data-one");
-	}
-#else
 	node = of_find_node_by_name(chip->spmi->dev.of_node,
-			"qcom,battery-data");
-#endif
+					"qcom,battery-data");
 	if (!node) {
 			pr_err("No available batterydata\n");
 			return -EINVAL;
@@ -3867,6 +3718,7 @@ static int set_battery_data(struct qpnp_bms_chip *chip)
 		chip->dt.cfg_v_cutoff_uv = batt_data->cutoff_uv;
 
 	chip->batt_data = batt_data;
+
 	return 0;
 }
 
@@ -3948,11 +3800,6 @@ do {									\
 	if (retval)							\
 		chip->dt.chip_prop = -EINVAL;				\
 } while (0)
-
-int get_design_capacity(void)
-{
-	return the_chip->batt_data->fcc;
-}
 
 static int parse_bms_dt_properties(struct qpnp_bms_chip *chip)
 {

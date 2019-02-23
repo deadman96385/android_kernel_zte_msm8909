@@ -117,7 +117,7 @@ static unsigned char *CTPM_FW;
 static unsigned int FW_LEN;
 #if defined(CONFIG_BOARD_ELDEN)
 static unsigned char CTPM_FW_DEFAULT[] = {
-#include "FT5346I_Nubia_Z899_LMFBV04514340_V0d_D01_20170524_app.i"
+#include "FT5346I_Nubia_Z899_LMFBV04514340_V0b_D01_20170411_app.i"
 };
 
 static unsigned char CTPM_FW_HLT[] = {
@@ -130,15 +130,15 @@ static unsigned char CTPM_FW_DEFAULT[] = {
 };
 
 static unsigned char CTPM_FW_HLT[] = {
-#include "ZTE_N818S_HLT_FT6336U_V14_20170602_app.i"
+#include "ZTE_N818S_HLT_FT6336U_V13_20170413_app.i"
 };
 
 static unsigned char CTPM_FW_LCE[] = {
-#include "ZTE_N818S_LCE_FT6336U_V12_20170602_app.i"
+#include "ZTE_N818S_LCE_FT6336U_V10_20170414_app.i"
 };
 #elif defined(CONFIG_BOARD_HELEN)
 static unsigned char CTPM_FW_DEFAULT[] = {
-#include "Nubia_K81_FT5526_V83_20170609_app.i"
+#include "14290_Nubia_K81_FT5526EEZ_V80_D01_20170220_app.i"
 };
 
 static unsigned char CTPM_FW_HLT[] = {

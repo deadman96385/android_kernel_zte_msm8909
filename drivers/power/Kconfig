@@ -570,12 +570,6 @@ config TI24x9x_CHARGER
 	help
 	  Say Y to include support for TI 24x9x Charger.
 
-config TI25601_CHARGER
-        tristate "TI 25601 Charger"
-        depends on I2C
-        help
-          Say Y to include support for TI 25601 Charger.
-
 config TI27520_BMS
 	tristate "TI bq27520 BMS"
 	depends on I2C

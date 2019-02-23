@@ -1800,7 +1800,7 @@ static bool cont_add(int facility, int level, const char *text, size_t len)
 		cont.ts = current_kernel_time();
 		cont.process_id = smp_processor_id();
 		cont.pid = current->pid;
-		snprintf(cont.comm, sizeof(cont.comm) - 1, "%s", current->comm);
+		snprintf(cont.comm, 50, "%s", current->comm);
 		/*zte_pm add*/
 	}
 

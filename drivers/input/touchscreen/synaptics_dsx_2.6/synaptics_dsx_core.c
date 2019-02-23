@@ -159,7 +159,6 @@ char *syn_fwfile_table[SYN_MOUDLE_NUM_MAX] = {
 	SYN_SAMSUNG_FW_NAME,
 	SYN_DIJING_FW_NAME,
 	SYN_LCE_FW_NAME,
-	SYN_DJN_FW_NAME,
 	SYN_HOLITCH_FW_NAME
 };
 
@@ -4315,10 +4314,6 @@ void synaptics_get_configid(
 		snprintf(p_sensor, PAGE_SIZE, "SAMSUNG(0x%x)", ts->config_id.sensor);
 		touch_module = SAMSUNG;
 		break;
-	case 'I':
-		snprintf(p_sensor, PAGE_SIZE, "DJN(0x%x)", ts->config_id.sensor);
-		touch_module = DJN;
-		break;
 	case 'R':
 		snprintf(p_sensor, PAGE_SIZE, "HOLITCH(0x%x)", ts->config_id.sensor);
 		touch_module = HOLITCH;
@@ -5315,10 +5310,8 @@ static void synaptics_rmi4_smoothing_enable(struct synaptics_rmi4_data *rmi4_dat
 static void synaptics_rmi4_suspend(struct work_struct *work)
 {
 	struct synaptics_rmi4_data *rmi4_data = dev_get_drvdata(dev);
-#ifdef ENABLE_PM_RESET
 	const struct synaptics_dsx_board_data *bdata = rmi4_data->hw_if->board_data;
 	int ret;
-#endif
 
 	pr_notice("%s: start!\n", __func__);
 
@@ -5352,7 +5345,7 @@ static void synaptics_rmi4_suspend(struct work_struct *work)
 		}
 
 		synaptics_rmi4_exp_fn_suspend(rmi4_data);
-#ifdef ENABLE_PM_RESET
+
 		gpio_set_value(bdata->reset_gpio, 0);
 		msleep(20);
 		if (syna_wake_gesture_flag == false) {
@@ -5368,7 +5361,6 @@ static void synaptics_rmi4_suspend(struct work_struct *work)
 			else
 				pr_notice("%s:  disable regulator succeed!\n", __func__);
 		}
-#endif
 	}
 
 exit:
@@ -5389,10 +5381,8 @@ static void synaptics_rmi4_resume(struct work_struct *work)
 #endif
 	struct synaptics_rmi4_exp_fhandler *exp_fhandler;
 	struct synaptics_rmi4_data *rmi4_data = dev_get_drvdata(dev);
-#ifdef ENABLE_PM_RESET
 	const struct synaptics_dsx_board_data *bdata = rmi4_data->hw_if->board_data;
 	int ret;
-#endif
 
 	pr_notice("%s: start!\n", __func__);
 
@@ -5413,7 +5403,6 @@ static void synaptics_rmi4_resume(struct work_struct *work)
 
 		pr_notice("%s: syna_wake_gesture_flag=%d\n", __func__, syna_wake_gesture_flag);
 
-#ifdef ENABLE_PM_RESET
 		/*set reset high*/
 		gpio_set_value(bdata->reset_gpio, !bdata->reset_on_state);
 		msleep(bdata->reset_active_ms);
@@ -5437,7 +5426,6 @@ static void synaptics_rmi4_resume(struct work_struct *work)
 			msleep(bdata->reset_delay_ms);
 			pr_notice("%s: HW reset end!\n", __func__);
 		}
-#endif
 
 		rmi4_data->current_page = MASK_8BIT;
 

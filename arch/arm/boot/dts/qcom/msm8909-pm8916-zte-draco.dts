@@ -51,7 +51,6 @@
 		qcom,chg-vadc = <&pm8916_vadc>;
 		qcom,chg-adc_tm = <&pm8916_adc_tm>;
 		qcom,bpd-detection = "bpd_thm";
-		qcom,disable-vbatdet-based-recharge;
 	};
 
 &pm8916_bms {
@@ -59,7 +58,7 @@
 		qcom,battery-data = <&qrd_batterydata>;
 
 		qcom,v-cutoff-uv = <3400000>;
-		qcom,max-voltage-uv = <4350000>;
+		qcom,max-voltage-uv = <4400000>;
 		qcom,r-conn-mohm = <16>;
 		qcom,shutdown-soc-valid-limit = <100>;
 		qcom,low-soc-calculate-soc-threshold = <15>;
@@ -79,8 +78,6 @@
 		qcom,force-s2-in-charging;
 		qcom,report-charger-eoc;
 		qcom,resume-soc = <96>;
-		qcom,use-reported-soc;
-		qcom,use-poweroff-soc;
 	};
 
 &soc {

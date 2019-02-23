@@ -23,15 +23,14 @@
 &ti2419x_chg {
 	zte,float-voltage-mv = <4352>;
 	zte,iterm-ma = <128>;
-	zte,hw-iterm-disabled;
+	/*zte,hw-iterm-disabled;*/
 	/*zte,charging-disabled; changed by zte */
 	zte,recharge-thresh-mv = <100>;
 	zte,warm_recharge-thresh-mv = <50>;
 	zte,vbatdet-max-err-mv = <20>;
-	zte,charging-timeout = <10>;
+	zte,charging-timeout = <12>;
 	zte,input_voltage_mv = <4520>;
-	zte,max_usb_current = <900>;
-	zte,max_usb_current_ti25601 = <800>;
+	zte,max_usb_current = <800>;
 	zte,max_battery_current = <1600>;
 	zte,thermal-mitigation = <1500 1000 900 500 0>;
 	zte,warm_bat_mv = <4100>;
@@ -60,15 +59,6 @@
 		qcom,vref-batt-therm = <1800000>;
 
 		#include "zte_batterydata-qrd-4v35-2100mah.dtsi"
-	};
-};
-
-/ {
-	qrd_batterydata_byd: qcom,battery-data-byd {
-		qcom,rpull-up-kohm = <0>;
-		qcom,vref-batt-therm = <1800000>;
-
-		#include "batterydata-qrd-skui-4v35-2200mah.dtsi"
 	};
 };
 
@@ -132,7 +122,7 @@
 		qcom,force-s3-on-suspend;
 		qcom,force-s2-in-charging;
 		qcom,report-charger-eoc;
-		qcom,resume-soc = <99>;
+		qcom,resume-soc = <96>;
 	};
 
 &pm8916_vib {

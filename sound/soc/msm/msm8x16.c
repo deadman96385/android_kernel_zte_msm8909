@@ -86,7 +86,7 @@ static int msm_pri_mi2s_rx_ch = 2;
 static int pri_rx_sample_rate = SAMPLING_RATE_48KHZ;
 static int mi2s_tx_sample_rate = SAMPLING_RATE_48KHZ;
 #if defined(CONFIG_BOARD_GEMI) || defined(CONFIG_BOARD_KELLY) || defined(CONFIG_BOARD_LEWIS) ||\
-	defined(CONFIG_BOARD_SAPPHIRE) || defined(CONFIG_BOARD_GRAYJOYLITE) || defined(CONFIG_BOARD_CALBEE)
+	defined(CONFIG_BOARD_SAPPHIRE) || defined(CONFIG_BOARD_GRAYJOYLITE)
 static int ext_spk_boost_enable;
 static int ext_spk_boost_gpio = -1;
 #endif
@@ -433,7 +433,7 @@ static char const *mi2s_tx_sample_rate_text[] = {"KHZ_48", "KHZ_96",
 					"KHZ_192", "KHZ_8",
 					"KHZ_16", "KHZ_32"};
 #if defined(CONFIG_BOARD_GEMI) || defined(CONFIG_BOARD_KELLY) || defined(CONFIG_BOARD_LEWIS) ||\
-	defined(CONFIG_BOARD_SAPPHIRE) || defined(CONFIG_BOARD_GRAYJOYLITE) || defined(CONFIG_BOARD_CALBEE)
+	defined(CONFIG_BOARD_SAPPHIRE) || defined(CONFIG_BOARD_GRAYJOYLITE)
 static const char *const ext_spk_boost_text[] = {"Off", "On"};
 #endif
 #if defined(CONFIG_BOARD_HELEN)
@@ -943,7 +943,7 @@ static int msm_mi2s_tx_ch_put(struct snd_kcontrol *kcontrol,
 }
 
 #if defined(CONFIG_BOARD_GEMI) || defined(CONFIG_BOARD_KELLY) || defined(CONFIG_BOARD_LEWIS) ||\
-	defined(CONFIG_BOARD_SAPPHIRE) || defined(CONFIG_BOARD_GRAYJOYLITE) || defined(CONFIG_BOARD_CALBEE)
+	defined(CONFIG_BOARD_SAPPHIRE) || defined(CONFIG_BOARD_GRAYJOYLITE)
 static int ext_spk_boost_get(struct snd_kcontrol *kcontrol,
 		       struct snd_ctl_elem_value *ucontrol)
 {
@@ -1311,7 +1311,7 @@ static const struct soc_enum msm_snd_enum[] = {
 	SOC_ENUM_SINGLE_EXT(6, pri_rx_sample_rate_text),
 	SOC_ENUM_SINGLE_EXT(6, mi2s_tx_sample_rate_text),
 #if defined(CONFIG_BOARD_GEMI) || defined(CONFIG_BOARD_KELLY) || defined(CONFIG_BOARD_LEWIS) ||\
-	defined(CONFIG_BOARD_SAPPHIRE) || defined(CONFIG_BOARD_GRAYJOYLITE) || defined(CONFIG_BOARD_CALBEE)
+	defined(CONFIG_BOARD_SAPPHIRE) || defined(CONFIG_BOARD_GRAYJOYLITE)
 	SOC_ENUM_SINGLE_EXT(2, ext_spk_boost_text),
 #endif
 #if defined(CONFIG_BOARD_HELEN)
@@ -1344,7 +1344,7 @@ static const struct snd_kcontrol_new msm_snd_controls[] = {
 	SOC_ENUM_EXT("MI2S TX SampleRate", msm_snd_enum[4],
 			mi2s_tx_sample_rate_get, mi2s_tx_sample_rate_put),
 #if defined(CONFIG_BOARD_GEMI) || defined(CONFIG_BOARD_KELLY) || defined(CONFIG_BOARD_LEWIS) ||\
-	defined(CONFIG_BOARD_SAPPHIRE) || defined(CONFIG_BOARD_GRAYJOYLITE) || defined(CONFIG_BOARD_CALBEE)
+	defined(CONFIG_BOARD_SAPPHIRE) || defined(CONFIG_BOARD_GRAYJOYLITE)
 	SOC_ENUM_EXT("External Spk Boost", msm_snd_enum[5],
 			ext_spk_boost_get, ext_spk_boost_put),
 #endif
@@ -3340,7 +3340,7 @@ static int msm8x16_asoc_machine_probe(struct platform_device *pdev)
 		}
 	}
 #if defined(CONFIG_BOARD_GEMI) || defined(CONFIG_BOARD_KELLY) || defined(CONFIG_BOARD_LEWIS) ||\
-	defined(CONFIG_BOARD_SAPPHIRE) || defined(CONFIG_BOARD_GRAYJOYLITE) || defined(CONFIG_BOARD_CALBEE)
+	defined(CONFIG_BOARD_SAPPHIRE) || defined(CONFIG_BOARD_GRAYJOYLITE)
 	ext_spk_boost_gpio = of_get_named_gpio(pdev->dev.of_node,
 				"qcom,msm-spk-ext-boost", 0);
 	if (ext_spk_boost_gpio < 0) {
@@ -3592,7 +3592,7 @@ static int msm8x16_asoc_machine_probe(struct platform_device *pdev)
 	}
 
 #if defined(CONFIG_BOARD_GEMI) || defined(CONFIG_BOARD_KELLY) || defined(CONFIG_BOARD_LEWIS) ||\
-	defined(CONFIG_BOARD_SAPPHIRE) || defined(CONFIG_BOARD_GRAYJOYLITE) || defined(CONFIG_BOARD_CALBEE)
+	defined(CONFIG_BOARD_SAPPHIRE) || defined(CONFIG_BOARD_GRAYJOYLITE)
 	gpio_direction_output(ext_spk_boost_gpio, 0);
 #endif
 
@@ -3621,7 +3621,7 @@ static int msm8x16_asoc_machine_remove(struct platform_device *pdev)
 	if (pdata->vaddr_gpio_mux_pcm_ctl)
 		iounmap(pdata->vaddr_gpio_mux_pcm_ctl);
 #if defined(CONFIG_BOARD_GEMI) || defined(CONFIG_BOARD_KELLY) || defined(CONFIG_BOARD_LEWIS) ||\
-	defined(CONFIG_BOARD_SAPPHIRE) || defined(CONFIG_BOARD_GRAYJOYLITE) || defined(CONFIG_BOARD_CALBEE)
+	defined(CONFIG_BOARD_SAPPHIRE) || defined(CONFIG_BOARD_GRAYJOYLITE)
 	if (gpio_is_valid(ext_spk_boost_gpio))
 		gpio_free(ext_spk_boost_gpio);
 #endif

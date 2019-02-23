@@ -661,7 +661,6 @@
 			zte,charging-timeout = <12>;
 			zte,input_voltage_mv = <4520>;
 			zte,max_usb_current = <1500>;
-			zte,max_usb_current_ti25601 = <1500>;
 			zte,max_battery_current = <2100>;
 			zte,thermal-mitigation = <1500 1000 900 500 0>;
 			zte,warm_bat_mv = <4000>;

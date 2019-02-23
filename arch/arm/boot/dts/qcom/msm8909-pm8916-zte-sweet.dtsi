@@ -1,8 +1,13 @@
 #include "dsi-panel-zte-lead-cpt-st7701-5p0-fwvga-video.dtsi"
 #include "dsi-panel-zte-helitai-hsd-jd9161-fwvga-video.dtsi"
+#include "dsi-panel-zte-dijing-cpt-jd9161-fwvga-video.dtsi"
 #include "dsi_panel_zte_skyworth_ili9806e_cpt_5p0_fwvga_video.dtsi"
 
 #include "touch-key-backlight-sweet.dtsi"
+
+&dsi_jd9161_fwvga_video {
+	qcom,cont-splash-enabled;
+};
 
 &dsi_st7701_fwvga_video {
 	qcom,cont-splash-enabled;
@@ -18,7 +23,7 @@
 
 &mdss_dsi0 {
 	qcom,dsi-pref-prim-pan = <&dsi_st7701_fwvga_video &dsi_hlt_jd9161_fwvga_video
-				&dsi_skyworth_ili9806e_fwvga_video>;
+				&dsi_jd9161_fwvga_video &dsi_skyworth_ili9806e_fwvga_video>;
 	pinctrl-names = "mdss_default", "mdss_sleep";
 	pinctrl-0 = <&mdss_dsi_active &mdss_te_active>;
 	pinctrl-1 = <&mdss_dsi_suspend &mdss_te_suspend>;

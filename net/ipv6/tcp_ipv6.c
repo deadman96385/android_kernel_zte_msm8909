@@ -1523,16 +1523,6 @@ process:
 		{
 			if (!tcp_prequeue(sk, skb))
 				ret = tcp_v6_do_rcv(sk, skb);
-			if ((tcp_socket_debugfs & 0x00000001)) {    /*ZTE_LC_TCP_DEBUG, 20170418 improved*/
-
-				pr_info("[IP] TCP RCV len = %hu, "
-					"Gpid:%d (%s) [%d (%s)] (%pI6:%hu <- %pI6:%hu)\n",
-					ntohs(hdr->payload_len),
-					current->group_leader->pid, current->group_leader->comm,
-					current->pid, current->comm,
-					&hdr->daddr, ntohs(th->dest),
-					&hdr->saddr, ntohs(th->source));
-			}
 		}
 	} else if (unlikely(sk_add_backlog(sk, skb,
 					   sk->sk_rcvbuf + sk->sk_sndbuf))) {

@@ -798,7 +798,7 @@ static int wcd_check_cross_conn(struct wcd_mbhc *mbhc)
 	WCD_MBHC_REG_UPDATE_BITS(WCD_MBHC_ELECT_SCHMT_ISRC, reg1);
 	pr_debug("%s: leave, plug type: %d\n", __func__,  plug_type);
 
-	return false;
+	return (plug_type == MBHC_PLUG_TYPE_GND_MIC_SWAP) ? true : false;
 }
 
 static bool wcd_is_special_headset(struct wcd_mbhc *mbhc)

@@ -2301,10 +2301,6 @@ static int ltr559_get_ps_value(struct ltr559_data *obj, u16 ps)
 		val_temp = 2;
 		intr_flag_value = 2;
 
-		if (1 == oil_far_cal || 13 == oil_far_cal || 26 == oil_far_cal) {
-			LTR559_DBG("%s: oil_far_cal=%d\n", __func__, oil_far_cal);
-		}
-
 		if (get_stable_ps(ps) == 1) {
 
 			val = 3;  /* persist oil far away*/
@@ -2322,8 +2318,8 @@ static void dynamic_update_ps_threshold(struct ltr559_data *ltr559, uint16_t cro
 	LTR559_DBG("%s: CT=%d\n", __func__, crosstalk);
 #if defined(CONFIG_BOARD_SWEET)
 	if (crosstalk < 1200) {
-		ltr559->default_ps_highthresh = crosstalk + 105;
-		ltr559->default_ps_lowthresh = crosstalk + 55;
+		ltr559->default_ps_highthresh = crosstalk + 165;
+		ltr559->default_ps_lowthresh = crosstalk + 80;
 		atomic_set(&ltr559->ps_persist_val_high, crosstalk + 1000);
 		atomic_set(&ltr559->ps_persist_val_low, crosstalk + 900);
 	} else {
@@ -3137,7 +3133,7 @@ static int ltr559_setup(struct ltr559_data *ltr559)
 		"%s: PS Set Persist Fail...\n", __func__);
 		goto err_out2;
 	}
-	dev_dbg(&ltr559->i2c_client->dev,
+dev_dbg(&ltr559->i2c_client->dev,
 		"%s: Set ltr559 persists\n", __func__);
 
 	/* Enable interrupts on the device and clear only when status is read */
@@ -3507,15 +3503,7 @@ static void check_prox_mean(int prox_mean , int *detection_threshold,	int *hsyte
 	} else {
 		prox_threshold_hi_param = 1900;
 		 prox_threshold_lo_param = 1500;
-	}
-#elif defined(CONFIG_BOARD_SWEET)
-	if (prox_mean < 1200) {
-		prox_threshold_hi_param = prox_mean + 115;
-		prox_threshold_lo_param = prox_mean + 60;
-	} else {
-		prox_threshold_hi_param = 1900;
-		prox_threshold_lo_param = 1500;
-	}
+	 }
 #else
 	if (prox_mean < 1200) {
 		prox_threshold_hi_param = prox_mean + 180;

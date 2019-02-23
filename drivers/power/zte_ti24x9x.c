@@ -191,11 +191,6 @@ int syna_ts_notifier_call_chain(unsigned long val);
 #if defined(CONFIG_BOARD_HELEN)
 #define LED_GPIO_CONTROL			1
 #endif
-#define CFG_MIN_VOLTAGE_UV			3400000
-
-#if defined(CONFIG_BOARD_SWEET)
-extern int get_store_mode(void);
-#endif
 
 enum {
 	USER	= BIT(0),
@@ -316,7 +311,6 @@ struct ti2419x_chip {
 	bool							mx_bms;
 	bool							ti_bms;
 	bool							vm_bms;
-	unsigned int						cfg_max_voltage_mv;
 };
 
 static int chg_time[] = {
@@ -629,8 +623,6 @@ static enum power_supply_property ti2419x_battery_properties[] = {
 	POWER_SUPPLY_PROP_ONLINE,
 	POWER_SUPPLY_PROP_CHARGE_FULL,
 	POWER_SUPPLY_PROP_TECHNOLOGY,
-	POWER_SUPPLY_PROP_VOLTAGE_MAX_DESIGN,
-	POWER_SUPPLY_PROP_VOLTAGE_MIN_DESIGN,
 
 };
 
@@ -1341,12 +1333,6 @@ static int ti2419x_battery_get_property(struct power_supply *psy,
 	case POWER_SUPPLY_PROP_TECHNOLOGY:
 		val->intval = POWER_SUPPLY_TECHNOLOGY_LION;
 		break;
-	case POWER_SUPPLY_PROP_VOLTAGE_MAX_DESIGN:
-		val->intval = chip->cfg_max_voltage_mv * 1000;
-		break;
-	case POWER_SUPPLY_PROP_VOLTAGE_MIN_DESIGN:
-		val->intval = CFG_MIN_VOLTAGE_UV;
-		break;
 	default:
 		return -EINVAL;
 	}
@@ -1473,6 +1459,9 @@ static int power_good_handler(struct ti2419x_chip *chip, u8 rt_stat)
 		} else {
 			wake_lock(&chip->charger_valid_lock);
 
+			chip->usb_present = usb_present;
+			power_supply_set_present(chip->usb_psy, usb_present);
+
 #ifdef CONFIG_TOUCHSCREEN_SYNAPTICS_DSX_I2C
 			syna_ts_notifier_call_chain(1);
 #endif
@@ -1480,9 +1469,6 @@ static int power_good_handler(struct ti2419x_chip *chip, u8 rt_stat)
 			schedule_delayed_work(&chip->charger_eoc_work, round_jiffies_relative(msecs_to_jiffies(2000)));
 		}
 	}
-
-	chip->usb_present = usb_present;
-	power_supply_set_present(chip->usb_psy, usb_present);
 
 	return 0;
 }
@@ -2549,12 +2535,6 @@ static void update_heartbeat(struct work_struct *work)
 	static int old_health = 0;
 	static int count = 0;
 
-#if defined(CONFIG_BOARD_SWEET)
-	struct power_supply     *batt_psy;
-	const union power_supply_propval enable = {1,};
-	const union power_supply_propval disable = {0,};
-#endif
-
 	/* zte add start by ssj */
 	if (!chip->resume_completed) {
 		pr_info("update_heartbeat launched before device-resume, schedule to 5s later\n");
@@ -2618,35 +2598,6 @@ static void update_heartbeat(struct work_struct *work)
 		pr_info("The status = %d\n", status);
 		zte_misc_red_led_control(false);
 		zte_misc_green_led_control(false);
-	}
-#endif
-
-#if defined(CONFIG_BOARD_SWEET)
-	batt_psy = power_supply_get_by_name("battery");
-
-	if (batt_psy) {
-		pr_debug("The batt_psy is done.\n");
-	} else {
-		pr_err("The batt_psy is NULL\n");
-	}
-
-	if (get_store_mode()) {
-		pr_debug("Enter store mode and the cap is %d\n", cap);
-		if (cap < 30) {
-			rc = batt_psy->set_property(batt_psy,
-					POWER_SUPPLY_PROP_CHARGING_ENABLED, &enable);
-		}
-		if (cap >= 35) {
-			rc = batt_psy->set_property(batt_psy,
-					POWER_SUPPLY_PROP_CHARGING_ENABLED, &disable);
-		}
-		if (rc) {
-			pr_err("Battery does not export CHARGING_ENABLED: %d\n", rc);
-		}
-	} else {
-		rc = batt_psy->set_property(batt_psy,
-				POWER_SUPPLY_PROP_CHARGING_ENABLED, &enable);
-		pr_debug("Do not  enter store_mode.\n");
 	}
 #endif
 
@@ -3301,11 +3252,6 @@ static int ti2419x_parse_dt(struct ti2419x_chip *chip)
 		chip->cool_bat_chg_ma = -EINVAL;
 	pr_info("cool_bat_chg_ma: %d\n", chip->cool_bat_chg_ma);
 
-	rc = of_property_read_u32(node, "zte,float-voltage-mv", &chip->cfg_max_voltage_mv);
-	if (rc < 0)
-		chip->cfg_max_voltage_mv = -EINVAL;
-	pr_info("cfg_max_voltage_mv: %d\n", chip->cfg_max_voltage_mv);
-
 	if (of_find_property(node, "zte,thermal-mitigation",
 					&chip->thermal_levels)) {
 		chip->thermal_mitigation = devm_kzalloc(chip->dev,
@@ -3413,17 +3359,6 @@ static struct power_supply *ti2419x_get_bms_psy(struct ti2419x_chip *chip)
 out:
 	return bms_psy;
 }
-
-#if defined(CONFIG_BOARD_SWEET)
-int schedule_update_heartbeat_work(void)
-{
-	cancel_delayed_work(&the_ti2419x_chip->update_heartbeat_work);
-	schedule_delayed_work(&the_ti2419x_chip->update_heartbeat_work,
-			round_jiffies_relative(msecs_to_jiffies(heartbeat_ms)));
-	return 0;
-}
-#endif
-
 static int ti2419x_probe(struct i2c_client *client,
 				const struct i2c_device_id *id)
 {

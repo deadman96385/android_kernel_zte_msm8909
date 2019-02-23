@@ -126,10 +126,6 @@ EXPORT_SYMBOL(sysctl_udp_wmem_min);
 atomic_long_t udp_memory_allocated;
 EXPORT_SYMBOL(udp_memory_allocated);
 
-/*ZTE_LC_TCP_DEBUG, 20170417 improved  start*/
-extern int tcp_socket_debugfs;
-/*ZTE_LC_TCP_DEBUG,  end*/
-
 #define MAX_UDP_PORTS 65536
 #define PORTS_PER_CHAIN (MAX_UDP_PORTS / UDP_HTABLE_SIZE_MIN)
 
@@ -1592,15 +1588,6 @@ static int __udp4_lib_mcast_deliver(struct net *net, struct sk_buff *skb,
 	struct udp_hslot *hslot = udp_hashslot(udptable, net, ntohs(uh->dest));
 	int dif;
 	unsigned int i, count = 0;
-	if ((tcp_socket_debugfs & 0x00000001)) {       /*ZTE_PM_TCP  lcf@20160523*/
-		pr_info("[IP] UDP RCV Multicasts len=%d , "
-			" %d (%s) [%d (%s)] (%pI4:%hu <- %pI4:%hu)\n",
-			ntohs(ip_hdr(skb)->tot_len),
-			current->group_leader->pid, current->group_leader->comm,
-			current->pid, current->comm,
-			&daddr, ntohs(uh->dest),
-			&saddr, ntohs(uh->source));
-		}
 
 	spin_lock(&hslot->lock);
 	sk = sk_nulls_head(&hslot->head);
@@ -1715,17 +1702,6 @@ int __udp4_lib_rcv(struct sk_buff *skb, struct udp_table *udptable,
 	if (udp4_csum_init(skb, uh, proto))
 		goto csum_error;
 
-		if ((tcp_socket_debugfs & 0x00000001)) {       /*ZTE_PM_TCP  lcf@20160523*/
-
-			pr_info("[IP] UDP RCV len=%d, "
-				"Gpid:%d (%s) [%d (%s)] (%pI4:%hu <- %pI4:%hu)\n",
-				ntohs(ip_hdr(skb)->tot_len),
-				current->group_leader->pid, current->group_leader->comm,
-				current->pid, current->comm,
-				&daddr, ntohs(uh->dest),
-				&saddr, ntohs(uh->source));
-		}
-
 	if (rt->rt_flags & (RTCF_BROADCAST|RTCF_MULTICAST))
 		return __udp4_lib_mcast_deliver(net, skb, uh,
 				saddr, daddr, udptable);
@@ -1734,16 +1710,6 @@ int __udp4_lib_rcv(struct sk_buff *skb, struct udp_table *udptable,
 
 	if (sk != NULL) {
 		int ret = udp_queue_rcv_skb(sk, skb);
-		if ((tcp_socket_debugfs & 0x00000001)) {       /*ZTE_PM_TCP  lcf@20160523*/
-
-			pr_info("[IP] UDP RCV len = %hu, "
-				" %d (%s) [%d (%s)] (%pI4:%hu <- %pI4:%hu)\n",
-				ulen,
-				current->group_leader->pid, current->group_leader->comm,
-				current->pid, current->comm,
-				&daddr, ntohs(uh->dest),
-				&saddr, ntohs(uh->source));
-		}
 		sock_put(sk);
 
 		/* a return value > 0 means to resubmit the input, but

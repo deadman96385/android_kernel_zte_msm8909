@@ -39,7 +39,6 @@
 		qcom,mdss-dsi-color-order = "rgb_swap_rgb";
 		qcom,mdss-dsi-underflow-color = <0xff>;
 		qcom,mdss-dsi-border-color = <0>;
-		zte,lcd-backlight-min-value-limit;
 		qcom,mdss-dsi-on-command = [
 	39 01 00 00 00 00 06 FF FF 98 06 04 01
 	39 01 00 00 00 00 02 08 10
